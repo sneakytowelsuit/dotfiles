@@ -1,2 +1,2 @@
 # dotfiles
-Dotfiles for my Ubuntu installation on Framework 16
+This repo contains my system configuration for my Framework 16 laptop, acting as a learning experience to learn about NixOS.
