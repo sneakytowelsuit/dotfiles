@@ -1,6 +1,6 @@
 {
   "nodes": {
-    "nixpkgsstable": {
+    "nixpkgsStable": {
       "locked": {
         "lastModified": 1746183838,
         "narHash": "sha256-kwaaguGkAqTZ1oK0yXeQ3ayYjs8u/W7eEfrFpFfIDFA=",
@@ -18,7 +18,7 @@
     },
     "root": {
       "inputs": {
-        "nixpkgsstable": "nixpkgsstable"
+        "nixpkgsStable": "nixpkgsStable"
       }
     }
   },
