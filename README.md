@@ -1,2 +1,3 @@
 # dotfiles
-Dotfiles for my Ubuntu installation on Framework 16
+
+Configuration for my personal computers using Aurora DX.
