@@ -1,0 +1,7 @@
+cosign.key
+*.age
+*.pem
+*.p12
+.env
+.env.*
+!*.env.example

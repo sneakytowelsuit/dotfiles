@@ -1,0 +1,100 @@
+name: Build workstation OS
+
+on:
+  push:
+    paths:
+      - "os/**"
+      - ".github/workflows/build-os.yml"
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: workstation-os-publish
+  cancel-in-progress: false
+
+jobs:
+  check-base:
+    runs-on: ubuntu-24.04
+    outputs:
+      base_digest: ${{ steps.compare.outputs.base_digest }}
+      should_build: ${{ steps.compare.outputs.should_build }}
+    steps:
+      - name: Install image inspection tool
+        run: sudo apt-get update && sudo apt-get install -y skopeo jq
+      - name: Compare upstream digest with published image
+        id: compare
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/workstation:stable"
+          base_digest="$(skopeo inspect --no-tags docker://ghcr.io/ublue-os/aurora-dx:stable | jq -r .Digest)"
+          if [[ -z "$base_digest" || "$base_digest" == null ]]; then
+            echo 'Could not resolve Aurora DX Stable digest' >&2
+            exit 1
+          fi
+          echo "base_digest=$base_digest" >> "$GITHUB_OUTPUT"
+
+          if [[ "$GITHUB_EVENT_NAME" == schedule ]]; then
+            authfile="$RUNNER_TEMP/ghcr-auth.json"
+            printf '%s' "$GH_TOKEN" | skopeo login --authfile "$authfile" ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+            published_digest="$(skopeo inspect --authfile "$authfile" --config "docker://$image" 2>/dev/null | jq -r '.config.Labels["io.workstation.base-digest"] // empty' || true)"
+            if [[ "$published_digest" == "$base_digest" ]]; then
+              echo 'Aurora DX Stable digest is unchanged; skipping image build.'
+              echo 'should_build=false' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo 'should_build=true' >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check-base
+    if: needs.check-base.outputs.should_build == 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require signing key
+        env:
+          SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
+        run: test -n "$SIGNING_SECRET"
+      - name: Set image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/workstation" >> "$GITHUB_ENV"
+      - name: Build current Aurora DX Stable
+        env:
+          BASE_DIGEST: ${{ needs.check-base.outputs.base_digest }}
+        run: |
+          podman build --pull=always \
+            --build-arg "BASE_IMAGE=ghcr.io/ublue-os/aurora-dx@${BASE_DIGEST}" \
+            --build-arg "BASE_DIGEST=${BASE_DIGEST}" \
+            --file os/Containerfile --tag localhost/workstation:${{ github.sha }} os
+      - name: Check workstation recipe in image
+        run: |
+          podman run --rm localhost/workstation:${{ github.sha }} just --unstable --fmt --check --justfile /usr/share/ublue-os/just/60-custom.just
+          podman run --rm localhost/workstation:${{ github.sha }} ujust --list > /tmp/ujust-recipes
+          grep -q workstation-sync /tmp/ujust-recipes
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p "$HOME/.docker"
+          printf '%s' "$GH_TOKEN" | podman login ghcr.io --authfile "$HOME/.docker/config.json" --username "$GITHUB_ACTOR" --password-stdin
+      - name: Push commit image
+        run: podman push --authfile "$HOME/.docker/config.json" --digestfile /tmp/image-digest localhost/workstation:${{ github.sha }} "${IMAGE}:${{ github.sha }}"
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: v3.1.3
+      - name: Sign image digest
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+        run: |
+          digest="$(cat /tmp/image-digest)"
+          cosign sign --yes --new-bundle-format=false --use-signing-config=false --registry-referrers-mode=legacy --key env://COSIGN_PRIVATE_KEY "${IMAGE}@${digest}"
+      - name: Publish stable tag
+        run: podman push --authfile "$HOME/.docker/config.json" localhost/workstation:${{ github.sha }} "${IMAGE}:stable"

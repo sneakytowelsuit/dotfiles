@@ -1,0 +1,29 @@
+// Noctalia v5 owns launcher, notifications, lock screen, and OSDs.
+spawn-at-startup "noctalia"
+
+binds {
+    Mod+Return { spawn "foot"; }
+    Mod+Space { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
+    Mod+B { spawn "flatpak" "run" "org.mozilla.firefox"; }
+    Mod+S { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
+    Mod+Q { close-window; }
+    Mod+Left { focus-column-left; }
+    Mod+Right { focus-column-right; }
+    Mod+Up { focus-workspace-up; }
+    Mod+Down { focus-workspace-down; }
+    Mod+Shift+Left { move-column-left; }
+    Mod+Shift+Right { move-column-right; }
+    Mod+Shift+Up { move-column-to-workspace-up; }
+    Mod+Shift+Down { move-column-to-workspace-down; }
+    XF86AudioRaiseVolume { spawn "noctalia" "msg" "volume-up"; }
+    XF86AudioLowerVolume { spawn "noctalia" "msg" "volume-down"; }
+    XF86AudioMute { spawn "noctalia" "msg" "volume-mute"; }
+    XF86MonBrightnessUp { spawn "noctalia" "msg" "brightness-up"; }
+    XF86MonBrightnessDown { spawn "noctalia" "msg" "brightness-down"; }
+    Mod+L { spawn "noctalia" "msg" "session" "lock"; }
+    Mod+Shift+E { spawn "noctalia" "msg" "panel-toggle" "session"; }
+}
+
+debug {
+    honor-xdg-activation-with-invalid-serial
+}

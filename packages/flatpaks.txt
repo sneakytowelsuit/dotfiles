@@ -1,0 +1,2 @@
+# One Flathub application ID per line.
+org.mozilla.firefox

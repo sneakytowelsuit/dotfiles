@@ -1,0 +1,10 @@
+ARG BASE_IMAGE=ghcr.io/ublue-os/aurora-dx:stable
+FROM ${BASE_IMAGE}
+
+ARG BASE_DIGEST
+LABEL io.workstation.base-digest="${BASE_DIGEST}"
+
+# Plasma and SDDM are inherited from Aurora.
+RUN dnf5 install -y niri noctalia niri-settings zsh foot && dnf5 clean all
+
+COPY build_files/60-custom.just /usr/share/ublue-os/just/60-custom.just

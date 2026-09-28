@@ -1,0 +1,38 @@
+name: Validate workstation configuration
+
+on:
+  push:
+    paths:
+      - "dotfiles/**"
+      - "packages/**"
+      - "bootstrap/**"
+      - ".github/workflows/validate-dotfiles.yml"
+  pull_request:
+    paths:
+      - "dotfiles/**"
+      - "packages/**"
+      - "bootstrap/**"
+      - ".github/workflows/validate-dotfiles.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install validation tools
+        run: sudo apt-get update && sudo apt-get install -y shellcheck stow zsh
+      - name: Check shell and TOML syntax
+        run: |
+          bash -n bootstrap/setup.sh bootstrap/sync.sh
+          shellcheck bootstrap/setup.sh bootstrap/sync.sh
+          zsh -n dotfiles/shell/.zshenv dotfiles/shell/.config/zsh/.zprofile dotfiles/shell/.config/zsh/.zshrc dotfiles/shell/.config/zsh/plugins.zsh
+          python3 -c 'import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path("dotfiles").rglob("*.toml")]'
+      - name: Check Stow structure
+        run: |
+          temp_home="$(mktemp -d)"
+          mapfile -t packages < <(awk '!/^#/ && NF {print $1}' packages/stow.txt)
+          stow --restow --no --verbose --dir "$PWD/dotfiles" --target "$temp_home" "${packages[@]}"
