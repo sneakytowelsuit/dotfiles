@@ -78,6 +78,7 @@ jobs:
           podman run --rm localhost/workstation:${{ github.sha }} just --unstable --fmt --check --justfile /usr/share/ublue-os/just/60-custom.just
           podman run --rm localhost/workstation:${{ github.sha }} ujust --list > /tmp/ujust-recipes
           grep -q workstation-sync /tmp/ujust-recipes
+          grep -q workstation-capture-brew /tmp/ujust-recipes
       - name: Log in to GHCR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

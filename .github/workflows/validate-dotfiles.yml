@@ -27,8 +27,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck stow zsh
       - name: Check shell and TOML syntax
         run: |
-          bash -n bootstrap/setup.sh bootstrap/sync.sh
-          shellcheck bootstrap/setup.sh bootstrap/sync.sh
+          bash -n bootstrap/*.sh
+          shellcheck bootstrap/*.sh
           zsh -n dotfiles/shell/.zshenv dotfiles/shell/.config/zsh/.zprofile dotfiles/shell/.config/zsh/.zshrc dotfiles/shell/.config/zsh/plugins.zsh
           python3 -c 'import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path("dotfiles").rglob("*.toml")]'
       - name: Check Stow structure
