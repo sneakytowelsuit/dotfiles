@@ -2,6 +2,8 @@
 
 This repository defines my Aurora DX Stable workstation. The custom OS image adds Niri, Noctalia, Zsh, and Foot to Aurora's Plasma desktop. Bootstrap applies the user tools and home configuration. The goal is to be able to repeat these steps on a fresh install.
 
+Already running stock Aurora DX on this Framework? Follow the machine-specific [migration guide](MIGRATION.md) to move this installation to the custom image.
+
 | Location | What it owns |
 | --- | --- |
 | `os/` | Custom bootc image, host RPMs, and system files |
