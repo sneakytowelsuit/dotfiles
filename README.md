@@ -66,6 +66,8 @@ Bootstrap registers this checkout at `~/.local/share/workstation/repo`, installs
 
 If Stow reports a conflict, it has left the existing home file in place. Compare that file with its counterpart under `dotfiles/`. Save anything you want to keep in the repository or a backup, move the conflicting home file aside, and rerun `./bootstrap/setup.sh`. Do not use `stow --adopt` without reviewing what it would copy into Git. On an existing home, common conflicts are `~/.gitconfig` and `~/.config/niri/config.kdl`; a fresh install may have none.
 
+On a machine with an existing `~/.gitconfig`, preserve its local identity settings before Stow links the repository version: `mkdir -p ~/.config/git && mv ~/.gitconfig ~/.config/git/local.gitconfig`. The tracked Git config includes that local file; it stays outside Git. For an existing Niri config, compare it with `dotfiles/niri/.config/niri/config.kdl`. Copy any settings you want to keep into the tracked file, then move the old home file aside before rerunning bootstrap. The tracked Niri config is intentionally minimal, so do not discard a working configuration without reviewing it.
+
 At this point, stay in Plasma. The host packages and `ujust workstation-sync` arrive with the custom image in step 4. If stock Aurora does not provide Zsh, bootstrap will set the login shell when you rerun it after the image switch.
 
 ## 3. Publish the custom image
@@ -83,6 +85,23 @@ The second command should print `cosign.key`. Store the private key securely out
 
 Cosign signs each published image digest with `cosign.key`; `cosign.pub` checks that signature. GitHub Actions uses the private key from `SIGNING_SECRET`, so your laptop does not need the private key to install or verify the image. Keep a copy of `cosign.key` in a password manager or other secure backup that survives an OS reinstall. The local `cosign.key` is ignored by Git and is **not** included when you clone this repository on another machine. If the GitHub secret is lost, restore it from that backup with `gh secret set SIGNING_SECRET --repo sneakytowelsuit/dotfiles < /path/to/cosign.key`. Do not generate a new key for each install; doing so would make old images fail verification with the new public key.
 
+Bitwarden is a good place for that backup. After signing in to the Bitwarden CLI, unlock your personal vault in your own terminal, then create a secure note from the existing key without printing it or putting it in shell history:
+
+```bash
+export BW_SESSION="$(bw unlock --raw)"
+set -o pipefail
+bw get template item \
+  | jq --rawfile signing_key cosign.key '.type = 2 | .secureNote.type = 0 | .name = "Workstation OS Cosign private key" | .notes = $signing_key' \
+  | bw encode \
+  | bw create item \
+  | jq -r '.id'
+bw get item 'Workstation OS Cosign private key' | jq -j '.notes' | cmp -s cosign.key - && echo 'Bitwarden backup matches local key'
+bw lock
+unset BW_SESSION
+```
+
+Run this **once**; creating it again makes a duplicate vault item. Keep the key in your personal vault rather than a shared collection. Once you have checked the backup, you may remove the ignored local `cosign.key`. On a fresh machine, unlock Bitwarden and restore it only if you need to recreate the GitHub secret: `umask 077; bw get item 'Workstation OS Cosign private key' | jq -j '.notes' > cosign.key`. Then set `SIGNING_SECRET` from that file and remove the temporary copy after checking it. The normal fresh-install path only needs the committed public key. See [Bitwarden's CLI guide](https://bitwarden.com/help/cli/) for login, unlock, secure notes, and vault locking.
+
 In GitHub, open this repository → **Settings → Secrets and variables → Actions → New repository secret**. Name the secret `SIGNING_SECRET` and paste the contents of `cosign.key`. If you prefer the CLI, sign in with `gh auth login` and run `gh secret set SIGNING_SECRET --repo sneakytowelsuit/dotfiles < cosign.key`. Keep a secure backup of the private key in case the Actions secret must be recreated.
 
 Review `git status`, commit the intended repository files and `cosign.pub`, then push to the default branch. On a fresh clone where only the public key is new, use `git add cosign.pub`, `git commit -m "Add image signing public key"`, and `git push`. If Git asks for your identity, set `user.name` and `user.email` in the Stow-managed `dotfiles/git/.gitconfig` first. Enable Actions in GitHub if prompted. A push that changes `os/` or `.github/workflows/build-os.yml` starts the build. Otherwise open **Actions → Build workstation OS → Run workflow**. Wait for the **build** job to pass. If it fails, inspect its log and fix the repository before switching the laptop.
@@ -99,7 +118,21 @@ The image is signed, but this repository does not yet configure the laptop to *r
 
 ## 4. Switch the Framework and finish setup
 
-Once the image has built and is available from GHCR, stage it on the Framework:
+Once the image has built and is available from GHCR, remove any temporary host package layers **before** switching. `bootc` cannot switch or upgrade a deployment with local RPM layers. List the requested packages first:
+
+```bash
+rpm-ostree status -v
+rpm-ostree status --json | jq -r '.deployments[] | select(.booted == true) | ."requested-packages"[]?'
+```
+
+If this shows the prototype `niri`, `niri-settings`, and `noctalia` layers, remove them and reboot into Plasma. On a clean fresh install with no layers, skip this step:
+
+```bash
+sudo rpm-ostree uninstall niri niri-settings noctalia
+sudo systemctl reboot
+```
+
+After reboot, confirm `rpm-ostree status -v` has no layered packages. Verify the published image from the repository root:
 
 ```bash
 cd ~/src/workstation
@@ -130,16 +163,6 @@ On the custom image, `ujust workstation-sync` reads the registered checkout and 
 ```bash
 WORKSTATION_REPO="$PWD" just --justfile os/build_files/60-custom.just workstation-sync
 ```
-
-Only if you used temporary `rpm-ostree install` layers during testing, list them and remove duplicates now supplied by the image:
-
-```bash
-rpm-ostree status --json | jq -r '.deployments[] | select(.booted == true) | ."requested-packages"[]?'
-sudo rpm-ostree uninstall PACKAGE_NAME
-sudo systemctl reboot
-```
-
-Replace `PACKAGE_NAME` with each package you actually layered. Do not run the uninstall command when the list is empty.
 
 ## 5. Daily use
 
