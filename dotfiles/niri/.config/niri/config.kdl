@@ -1,6 +1,6 @@
 spawn-at-startup "noctalia"
 
-spawn-sh-at-startup "sleep 3 && pkill -9 XWayland"
+spawn-sh-at-startup "sleep 3 && pkill -9 Xwayland"
 
 // This config is in the KDL format: https://kdl.dev
 // "/-" comments out the following node.

@@ -5,3 +5,4 @@ cosign.key
 .env
 .env.*
 !*.env.example
+dotfiles/shell/.config/zsh/.zcompdump
