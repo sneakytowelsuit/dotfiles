@@ -26,15 +26,6 @@ if command -v mise >/dev/null 2>&1; then
     mise install
 fi
 
-zsh_path="$(command -v zsh || true)"
-current_shell="$(getent passwd "$USER" | cut -d: -f7)"
-if [[ -n "$zsh_path" && "$current_shell" != "$zsh_path" ]]; then
-    if [[ "$zsh_path" == /usr/bin/zsh || "$zsh_path" == /bin/zsh ]]; then
-        chsh -s "$zsh_path"
-        printf 'Log out and back in to use Zsh as the login shell.\n'
-    else
-        printf 'Zsh is not a recognized host shell; keeping the current login shell.\n' >&2
-    fi
-fi
+"$root/bootstrap/set-login-shell.sh"
 
 printf 'Setup complete. Select Niri in SDDM; Plasma remains the fallback.\n'

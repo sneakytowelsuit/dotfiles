@@ -64,7 +64,7 @@ Apply the repository:
 ./bootstrap/setup.sh
 ```
 
-Bootstrap registers this checkout at `~/.local/share/workstation/repo`, installs missing Brew formulae and Flatpaks, links the packages in `packages/stow.txt`, installs the declared mise runtimes, and changes the login shell to Zsh if the host already has Zsh. It is safe to rerun. The Brew step avoids intentional upgrades of existing formulae. The first Zsh session downloads the declared Zinit plugins.
+Bootstrap registers this checkout at `~/.local/share/workstation/repo`, installs missing Brew formulae and Flatpaks, links the packages in `packages/stow.txt`, installs the declared mise runtimes, and changes the login shell to Zsh if the host already has Zsh. It is safe to rerun. Aurora does not ship `chsh`, so bootstrap falls back to its supported `sudo usermod` command and may ask for your password. The Brew step avoids intentional upgrades of existing formulae. The first Zsh session downloads the declared Zinit plugins.
 
 If Stow reports a conflict, it has left the existing home file in place. Compare that file with its counterpart under `dotfiles/`. Save anything you want to keep in the repository or a backup, move the conflicting home file aside, and rerun `./bootstrap/setup.sh`. Do not use `stow --adopt` without reviewing what it would copy into Git. On an existing home, common conflicts are `~/.gitconfig` and `~/.config/niri/config.kdl`; a fresh install may have none.
 
@@ -158,7 +158,7 @@ cd ~/src/workstation
 ujust workstation-sync
 ```
 
-The second bootstrap run sets Zsh as the login shell if it was unavailable on stock Aurora. Sign out and back in, then check `getent passwd "$USER" | cut -d: -f7`; it should end in `zsh`. At SDDM, select **Niri** and verify Noctalia, the launcher (`Mod+Space`), Foot (`Mod+Return`), Firefox (`Mod+B`), volume, brightness, lock (`Mod+L`), and the session menu (`Mod+Shift+E`). Confirm Plasma remains selectable. Repeat [the hardware checklist](docs/framework-validation.md) on the custom image.
+The second bootstrap run sets Zsh as the login shell if it was unavailable on stock Aurora. On Aurora it uses `sudo usermod` because `chsh` is not installed. Sign out and back in, then check `getent passwd "$USER" | cut -d: -f7`; it should end in `zsh`. At SDDM, select **Niri** and verify Noctalia, the launcher (`Mod+Space`), Foot (`Mod+Return`), Firefox (`Mod+B`), volume, brightness, lock (`Mod+L`), and the session menu (`Mod+Shift+E`). Confirm Plasma remains selectable. Repeat [the hardware checklist](docs/framework-validation.md) on the custom image.
 
 On the custom image, `ujust workstation-sync` reads the registered checkout and applies new Brew, Flatpak, and Stow declarations. On stock Aurora, before that recipe exists, run the equivalent from this repository:
 

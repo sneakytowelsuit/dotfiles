@@ -32,7 +32,7 @@ git config --global user.name
 getent passwd "$USER" | cut -d: -f7
 ```
 
-Bootstrap registers this checkout for the future `ujust` recipes, installs missing Brew formulae and Flatpaks, links the listed Stow packages, installs mise tools, and changes the login shell to Zsh. It may ask for your password when changing the shell. Sign out and back in before judging the interactive shell. If Stow reports another conflict, review and preserve that file, then rerun `./bootstrap/setup.sh`; it is designed to be repeatable. The `ujust workstation-sync` recipe will appear only after the custom image is booted.
+Bootstrap registers this checkout for the future `ujust` recipes, installs missing Brew formulae and Flatpaks, links the listed Stow packages, installs mise tools, and changes the login shell to Zsh. Aurora does not include `chsh`, so bootstrap uses `sudo usermod` there and may ask for your password. Sign out and back in before judging the interactive shell. If Stow reports another conflict, review and preserve that file, then rerun `./bootstrap/setup.sh`; it is designed to be repeatable. The `ujust workstation-sync` recipe will appear only after the custom image is booted.
 
 ## 3. Remove the temporary RPM layers
 
@@ -78,6 +78,8 @@ systemctl list-timers uupd.timer
 ```
 
 The booted image should be `ghcr.io/sneakytowelsuit/workstation:stable`, with no local RPM layers. `ujust` should list `workstation-sync` and `workstation-capture-brew`, and the login shell should end in `zsh`. The second bootstrap run reconciles user packages and links after the image switch. Use `ujust workstation-sync` for later Brewfile, Flatpak, and Stow changes. Aurora's `uupd.timer` was active before migration; check that it remains scheduled so future successful custom images are staged automatically.
+
+If the custom deployment is already booted, do not switch it again just to pick up bootstrap fixes. Pull this repository, rerun `./bootstrap/setup.sh`, and perform the checks above; bootstrap operates on the user environment and is intentionally repeatable.
 
 Then sign out, select **Niri** in SDDM, and check Noctalia, the launcher, Foot, Firefox, audio, brightness, lock, and logout. Confirm **Plasma** is still selectable. Repeat the [Framework hardware checklist](docs/framework-validation.md), particularly external display, 240 Hz, and suspend/resume.
 
