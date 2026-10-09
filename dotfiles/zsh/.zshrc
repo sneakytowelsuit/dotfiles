@@ -14,19 +14,19 @@ autoload -Uz edit-command-line
 zle -N edit-command-line
 bindkey -M vicmd 'v' edit-command-line
 # Fix history navigation in Insert Mode
-bindkey '^P' up-line-or-history
-bindkey '^N' down-line-or-history
+bindkey '^P' up-history
+bindkey '^N' down-history
 
 # Fix history navigation in Normal/Command Mode (vicmd)
 bindkey -M vicmd '^P' up-line-or-history
 bindkey -M vicmd '^N' down-line-or-history
 #####
 
+eval "$(zoxide init zsh --cmd cd)"
 ##### aliases
 alias gg='lazygit'
 autoload -U compinit
 compinit
-
 #allow tab completion in the middle of a word
 setopt COMPLETE_IN_WORD
 
