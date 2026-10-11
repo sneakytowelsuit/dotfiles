@@ -186,7 +186,11 @@ If you installed a Homebrew package by hand while testing, run `ujust workstatio
 
 For an uncertain host package, prototype with `sudo rpm-ostree install PACKAGE_NAME`, reboot and test it, then either uninstall it or add it to `os/Containerfile`. Once the new image works, remove the temporary local layer. Keep steady-state local layering near zero.
 
-Zsh is for interactive sessions; scripts remain Bash. The Stow-managed Zsh configuration uses Zinit for completions, fzf-tab, autosuggestions, and syntax highlighting, with native vi mode. The repository does not create project devcontainers or Distroboxes automatically; each project owns those environments.
+Zsh is for interactive sessions; scripts remain Bash. Bootstrap and `ujust workstation-sync` link `dotfiles/zsh/.zshrc` to `~/.zshrc`. Edit that file for interactive settings. The managed `~/.zshenv` sets `ZDOTDIR=~/.config/zsh`, whose `.zshrc` forwards to `~/.zshrc` so login and non-login interactive Zsh shells both load it. After applying changes, open a new terminal or run `exec zsh`; sign out and back in if the login shell was just changed. If an existing `~/.zshrc` causes a Stow conflict, merge or back it up and move it aside before retrying sync.
+
+The Stow-managed Zsh configuration uses Zinit for completions, fzf-tab, autosuggestions, and syntax highlighting, with native vi mode. The repository does not create project devcontainers or Distroboxes automatically; each project owns those environments.
+
+In Niri, the Framework F12 logo action opens Noctalia's application launcher, and the F9 display action (Super+P) opens its Niri Displays panel. Depending on Fn lock, hold Fn to access these actions. The Stow-managed Noctalia config enables `raycursive/niri-displays` from the built-in community source. Bootstrap and `ujust workstation-sync` apply these declarations without an OS rebuild. Noctalia downloads the plugin; if the panel is unavailable after first enabling it, restart Noctalia or sign out and back in (required in testing with Noctalia 5.1.0). The panel changes display settings temporarily; keep permanent resolution, refresh rate, scale, and placement defaults in `dotfiles/niri/.config/niri/config.kdl`.
 
 ## Recovery
 

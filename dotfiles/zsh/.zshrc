@@ -22,13 +22,23 @@ bindkey -M vicmd '^P' up-line-or-history
 bindkey -M vicmd '^N' down-line-or-history
 #####
 
-eval "$(zoxide init zsh --cmd cd)"
 ##### aliases
 alias gg='lazygit'
-autoload -U compinit
-compinit
 #allow tab completion in the middle of a word
 setopt COMPLETE_IN_WORD
+
+if (( $+commands[brew] )); then
+    zinit_path="$(brew --prefix zinit 2>/dev/null)/zinit.zsh"
+    [[ -f "$zinit_path" ]] && source "$zinit_path"
+fi
+
+# Initialize completion once, before loading the widget plugins.
+source "$HOME/.config/zsh/plugins.zsh"
+
+(( $+commands[starship] )) && eval "$(starship init zsh)"
+(( $+commands[zoxide] )) && eval "$(zoxide init zsh --cmd cd)"
+(( $+commands[atuin] )) && eval "$(atuin init zsh)"
+(( $+commands[mise] )) && eval "$(mise activate zsh)"
 
 ## keep background processes at full speed
 #setopt NOBGNICE

@@ -2,6 +2,7 @@
 niri
 noctalia
 shell
+zsh
 git
 terminal
 mise
