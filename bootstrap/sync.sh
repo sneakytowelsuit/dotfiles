@@ -54,4 +54,6 @@ if (( ${#packages[@]} > 0 )); then
     stow --restow --dir "$root/dotfiles" --target "$HOME" "${packages[@]}"
 fi
 
-printf 'Brew, Flatpak, and Stow declarations are applied.\n'
+bash "$root/bootstrap/set-terminal-defaults.sh"
+
+printf 'Brew, Flatpak, Stow, and terminal defaults are applied.\n'

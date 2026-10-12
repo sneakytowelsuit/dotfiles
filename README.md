@@ -1,6 +1,6 @@
 # Framework 13 Pro workstation
 
-This repository defines my Aurora DX Stable workstation. The custom OS image adds Niri, Noctalia, Zsh, and Foot to Aurora's Plasma desktop. Bootstrap applies the user tools and home configuration. The goal is to be able to repeat these steps on a fresh install.
+This repository defines my Aurora DX Stable workstation. The custom OS image adds Niri, Noctalia, Zsh, and Ghostty to Aurora's Plasma desktop, with Foot available as a fallback. Bootstrap applies the user tools and home configuration. The goal is to be able to repeat these steps on a fresh install.
 
 Already running stock Aurora DX on this Framework? Follow the machine-specific [migration guide](MIGRATION.md) to move this installation to the custom image.
 
@@ -158,7 +158,7 @@ cd ~/src/workstation
 ujust workstation-sync
 ```
 
-The second bootstrap run sets Zsh as the login shell if it was unavailable on stock Aurora. On Aurora it uses `sudo usermod` because `chsh` is not installed. Sign out and back in, then check `getent passwd "$USER" | cut -d: -f7`; it should end in `zsh`. At SDDM, select **Niri** and verify Noctalia, the launcher (`Mod+Space`), Foot (`Mod+Return`), Firefox (`Mod+B`), volume, brightness, lock (`Mod+L`), and the session menu (`Mod+Shift+E`). Confirm Plasma remains selectable. Repeat [the hardware checklist](docs/framework-validation.md) on the custom image.
+The second bootstrap run sets Zsh as the login shell if it was unavailable on stock Aurora. On Aurora it uses `sudo usermod` because `chsh` is not installed. Sign out and back in, then check `getent passwd "$USER" | cut -d: -f7`; it should end in `zsh`. At SDDM, select **Niri** and verify Noctalia, the launcher (`Mod+Space`), Ghostty (`Mod+T`), Firefox (`Mod+B`), volume, brightness, lock (`Mod+L`), and the session menu (`Mod+Shift+E`). Confirm Plasma remains selectable. Repeat [the hardware checklist](docs/framework-validation.md) on the custom image.
 
 On the custom image, `ujust workstation-sync` reads the registered checkout and applies new Brew, Flatpak, and Stow declarations. On stock Aurora, before that recipe exists, run the equivalent from this repository:
 
@@ -185,6 +185,10 @@ If you installed a Homebrew package by hand while testing, run `ujust workstatio
 `ujust workstation-sync` installs declared items that are missing and restows links; it does not remove packages omitted from a list. Use `ujust update` when you want Aurora to update the system and existing apps. Aurora normally runs [automatic updates](https://docs.getaurora.dev/guides/basic-usage/); the laptop should follow the selected custom `:stable` image after switching. Check `rpm-ostree status -v` for automatic staging, or use `ujust toggle-updates` if updates were disabled. A staged image becomes active after the next reboot.
 
 For an uncertain host package, prototype with `sudo rpm-ostree install PACKAGE_NAME`, reboot and test it, then either uninstall it or add it to `os/Containerfile`. Once the new image works, remove the temporary local layer. Keep steady-state local layering near zero.
+
+Ghostty is the default terminal. The image installs it from the `scottames/ghostty` COPR documented in [Ghostty's Fedora installation guide](https://ghostty.org/docs/install/binary#fedora). Its Stow-managed configuration lives at `dotfiles/terminal/.config/ghostty/config`. Niri opens it with `Mod+T` and exports `TERMINAL=ghostty` for Noctalia's terminal applications. Bootstrap and `ujust workstation-sync` set KDE's terminal application and desktop service in `kdeglobals`, preserving its other settings. Foot remains installed; `Mod+T` opens Foot when Ghostty is unavailable, and sync leaves KDE's current terminal default alone until Ghostty is installed.
+
+To adopt Ghostty on an existing workstation, commit and push the image changes and wait for **Build workstation OS** to succeed. Then run `sudo bootc upgrade`, reboot into the updated image, and run `ujust workstation-sync`. Sign out and back in if Niri or Noctalia was already running when you applied the configuration, so Noctalia inherits the terminal environment. Check `ghostty +validate-config`, `Mod+T`, a terminal application launched through Noctalia, and Dolphin's **Open Terminal** action. Sync alone cannot install the host RPM.
 
 Zsh is for interactive sessions; scripts remain Bash. Bootstrap and `ujust workstation-sync` link `dotfiles/zsh/.zshrc` to `~/.zshrc`. Edit that file for interactive settings. The managed `~/.zshenv` sets `ZDOTDIR=~/.config/zsh`, whose `.zshrc` forwards to `~/.zshrc` so login and non-login interactive Zsh shells both load it. After applying changes, open a new terminal or run `exec zsh`; sign out and back in if the login shell was just changed. If an existing `~/.zshrc` causes a Stow conflict, merge or back it up and move it aside before retrying sync.
 

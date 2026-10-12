@@ -73,8 +73,12 @@ jobs:
             --build-arg "BASE_IMAGE=ghcr.io/ublue-os/aurora-dx@${BASE_DIGEST}" \
             --build-arg "BASE_DIGEST=${BASE_DIGEST}" \
             --file os/Containerfile --tag localhost/workstation:${{ github.sha }} os
-      - name: Check workstation recipe in image
+      - name: Check workstation image
         run: |
+          podman run --rm localhost/workstation:${{ github.sha }} rpm -q ghostty foot
+          podman run --rm --env XDG_CONFIG_HOME=/tmp/config \
+            --volume "$PWD/dotfiles/terminal/.config/ghostty:/tmp/config/ghostty:ro" \
+            localhost/workstation:${{ github.sha }} ghostty +validate-config
           podman run --rm localhost/workstation:${{ github.sha }} just --unstable --fmt --check --justfile /usr/share/ublue-os/just/60-custom.just
           podman run --rm localhost/workstation:${{ github.sha }} ujust --list > /tmp/ujust-recipes
           grep -q workstation-sync /tmp/ujust-recipes
