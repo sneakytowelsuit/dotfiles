@@ -50,6 +50,16 @@ jobs:
               if (!Number.isFinite(updated)) throw new Error(`Invalid timestamp on version ${version.id}`);
               return updated < cutoff;
             });
+            // GHCR can refuse removal of a package's last tagged version.
+            // If everything is expired, remove the preview package itself.
+            if (versions.length > 0 && expired.length === versions.length) {
+              core.info(`${process.env.DRY_RUN === 'true' ? 'Would delete' : 'Deleting'} the fully expired ${packageName} package`);
+              if (process.env.DRY_RUN !== 'true') {
+                await github.request(`DELETE ${route.slice(0, -'/versions'.length)}`);
+              }
+              await core.summary.addRaw(`${process.env.DRY_RUN === 'true' ? 'Would delete' : 'Deleted'} the preview package: all ${expired.length} versions are older than 7 days. Stable images are untouched.`).write();
+              return;
+            }
             for (const version of expired) {
               const tags = version.metadata?.container?.tags ?? [];
               core.info(`${process.env.DRY_RUN === 'true' ? 'Would delete' : 'Deleting'} ${packageName} version ${version.id}: ${tags.join(', ') || '(untagged)'}`);
