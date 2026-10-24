@@ -1,0 +1,60 @@
+name: Clean up expired workstation preview images
+
+on:
+  schedule:
+    - cron: "43 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List expired versions without deleting them
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+# Publishing and cleanup share a lock so cleanup never interrupts a push/sign.
+concurrency:
+  group: workstation-preview-publish-and-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          OWNER_TYPE: ${{ github.event.repository.owner.type }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        with:
+          script: |
+            // Deliberately fixed: this workflow can never target workstation.
+            const packageName = 'workstation-preview';
+            const ownerKind = process.env.OWNER_TYPE === 'Organization' ? 'orgs' : 'users';
+            const route = `/${ownerKind}/${context.repo.owner}/packages/container/${packageName}/versions`;
+            const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            let versions;
+            try {
+              // Collect every page before deletion changes the pagination.
+              versions = await github.paginate(`GET ${route}`, { per_page: 100 });
+            } catch (error) {
+              if (error.status === 404) {
+                core.notice('No preview package found. If it exists, grant this repository Actions access with the Admin role in its package settings.');
+                return;
+              }
+              throw error;
+            }
+            const expired = versions.filter(version => {
+              const updated = Date.parse(version.updated_at);
+              if (!Number.isFinite(updated)) throw new Error(`Invalid timestamp on version ${version.id}`);
+              return updated < cutoff;
+            });
+            for (const version of expired) {
+              const tags = version.metadata?.container?.tags ?? [];
+              core.info(`${process.env.DRY_RUN === 'true' ? 'Would delete' : 'Deleting'} ${packageName} version ${version.id}: ${tags.join(', ') || '(untagged)'}`);
+              if (process.env.DRY_RUN !== 'true') {
+                await github.request(`DELETE ${route}/{version_id}`, { version_id: version.id });
+              }
+            }
+            await core.summary.addRaw(`${process.env.DRY_RUN === 'true' ? 'Would delete' : 'Deleted'} ${expired.length} preview versions older than 7 days (including signature artifacts). Stable images are in a separate package and are never targeted.`).write();
