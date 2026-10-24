@@ -57,6 +57,19 @@ class DotfilesTest(unittest.TestCase):
         self.assertFalse(target.is_symlink())
 
     @unittest.skipUnless(MISE, "mise is required")
+    def test_switch_between_checkout_and_image_sources(self):
+        snapshot = Path(self.temp.name) / "snapshot"
+        snapshot.mkdir()
+        shutil.copy(ROOT / "mise.toml", snapshot / "mise.toml")
+        shutil.copytree(ROOT / "dotfiles", snapshot / "dotfiles",
+                        ignore=shutil.ignore_patterns(".zcompdump*"))
+        for source in (ROOT, snapshot, ROOT):
+            for args in (("trust", str(source / "mise.toml")), ("dotfiles", "apply")):
+                subprocess.run([MISE, "-C", str(source), *args], env=self.env,
+                               text=True, capture_output=True, check=True)
+            self.assertEqual((self.home / ".gitconfig").resolve(), source / "dotfiles/.gitconfig")
+
+    @unittest.skipUnless(MISE, "mise is required")
     def test_legacy_links_are_migrated_without_removing_user_files(self):
         (self.home / ".config").mkdir()
         (self.home / ".config/niri").symlink_to(ROOT / "dotfiles/niri/.config/niri")

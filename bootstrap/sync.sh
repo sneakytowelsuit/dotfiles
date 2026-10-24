@@ -10,12 +10,14 @@ export PATH="$HOME/.local/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$PAT
 if ! command -v mise >/dev/null 2>&1; then
     bash "$root/bootstrap/install-mise.sh"
 fi
+mise_bin="$(command -v mise)"
+[[ -x /usr/bin/mise ]] && mise_bin=/usr/bin/mise
 
 # Project configuration must be trusted explicitly; no shell hook applies it.
-mise trust "$root/mise.toml"
+"$mise_bin" trust "$root/mise.toml"
 if [[ "${1:-}" == --dry-run ]]; then
     python3 "$root/bootstrap/migrate-stow.py" --root "$root" --dry-run
-    mise -C "$root" bootstrap --dry-run
+    "$mise_bin" -C "$root" bootstrap --dry-run
     exit 0
 fi
 
@@ -23,9 +25,9 @@ fi
 python3 "$root/bootstrap/migrate-stow.py" --root "$root"
 # Restore the home links before package downloads, so a network/package error
 # cannot leave migrated shell configuration missing.
-mise -C "$root" dotfiles apply
+"$mise_bin" -C "$root" dotfiles apply
 if command -v flatpak >/dev/null 2>&1; then
     flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 fi
-mise -C "$root" bootstrap
+"$mise_bin" -C "$root" bootstrap
 printf 'Workstation packages, dotfiles, tools, and desktop defaults are applied.\n'

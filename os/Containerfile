@@ -17,7 +17,8 @@ RUN dnf5 -y copr enable scottames/ghostty && \
 # Build from the repository root. Copy only public configuration, never the
 # checkout as a whole (which could contain an ignored signing key).
 COPY bootstrap/install-mise.sh /tmp/install-mise.sh
-RUN bash /tmp/install-mise.sh /usr/local/bin/mise && rm /tmp/install-mise.sh
+# Aurora redirects /usr/local into /var; image-managed binaries belong in /usr.
+RUN bash /tmp/install-mise.sh /usr/bin/mise && rm /tmp/install-mise.sh
 COPY os/build_files/60-custom.just /usr/share/ublue-os/just/60-custom.just
 COPY mise.toml /usr/share/workstation/mise.toml
 COPY bootstrap/ /usr/share/workstation/bootstrap/

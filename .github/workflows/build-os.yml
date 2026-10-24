@@ -103,12 +103,12 @@ jobs:
           grep -q workstation-sync /tmp/ujust-recipes
           grep -q workstation-capture-brew /tmp/ujust-recipes
           grep -q workstation-image-sync /tmp/ujust-recipes
-          podman run --rm localhost/workstation:${{ github.sha }} mise --version
+          podman run --rm localhost/workstation:${{ github.sha }} /usr/bin/mise --version
           podman run --rm --env HOME=/tmp/workstation-home \
             localhost/workstation:${{ github.sha }} bash -c '
               mkdir -p "$HOME"
-              mise trust /usr/share/workstation/mise.toml
-              mise -C /usr/share/workstation dotfiles apply
+              /usr/bin/mise trust /usr/share/workstation/mise.toml
+              /usr/bin/mise -C /usr/share/workstation dotfiles apply
               test -L "$HOME/.config/niri/config.kdl"
               test -L "$HOME/.config/mise/config.toml"
               test ! -e /usr/share/workstation/cosign.key
