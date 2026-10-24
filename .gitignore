@@ -5,4 +5,5 @@ cosign.key
 .env
 .env.*
 !*.env.example
-dotfiles/shell/.config/zsh/.zcompdump*
+dotfiles/.config/zsh/.zcompdump*
+__pycache__/

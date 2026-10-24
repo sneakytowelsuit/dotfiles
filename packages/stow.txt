@@ -1,9 +1,0 @@
-# Stow packages to reconcile with $HOME. Add new package directories here.
-niri
-noctalia
-shell
-zsh
-git
-terminal
-mise
-nvim

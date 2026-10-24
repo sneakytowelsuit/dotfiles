@@ -27,10 +27,8 @@ alias gg='lazygit'
 #allow tab completion in the middle of a word
 setopt COMPLETE_IN_WORD
 
-if (( $+commands[brew] )); then
-    zinit_path="$(brew --prefix zinit 2>/dev/null)/zinit.zsh"
-    [[ -f "$zinit_path" ]] && source "$zinit_path"
-fi
+zinit_path=/home/linuxbrew/.linuxbrew/opt/zinit/zinit.zsh
+[[ -f "$zinit_path" ]] && source "$zinit_path"
 
 # Initialize completion once, before loading the widget plugins.
 source "$HOME/.config/zsh/plugins.zsh"

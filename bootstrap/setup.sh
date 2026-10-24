@@ -22,10 +22,4 @@ fi
 
 "$root/bootstrap/sync.sh"
 
-if command -v mise >/dev/null 2>&1; then
-    mise install
-fi
-
-"$root/bootstrap/set-login-shell.sh"
-
 printf 'Setup complete. Select Niri in SDDM; Plasma remains the fallback.\n'
