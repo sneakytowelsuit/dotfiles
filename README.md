@@ -49,6 +49,8 @@ Apply the repository:
 
 Bootstrap registers this checkout at `~/.local/share/workstation/repo`, ensures mise is available, configures the user Flathub remote, and runs `mise bootstrap`. The image includes a pinned mise binary; on an older host without mise, the helper downloads a pinned release and verifies its checksum. Update an existing older mise if the configuration reports a minimum-version error.
 
+Interactive shells select the image's bundled mise even if an older Homebrew copy is still installed.
+
 `mise.toml` declares Homebrew formulae, font casks, and user Flatpaks. Mise installs formulae directly into the standard Homebrew prefix; an existing Homebrew installation remains usable, but is not required. Creating that prefix may request sudo. Existing packages are not intentionally upgraded by sync. Runtime defaults and the three AI CLIs live in `dotfiles/.config/mise/config.toml`; those tools use mise's version management instead of Linux-incompatible application casks.
 
 Home files live at their actual home-relative paths: `dotfiles/.gitconfig`, `dotfiles/.zshenv`, and `dotfiles/.config/<application>/...`. There are no Stow package wrappers or package lists. A one-time migration removes only symlinks pointing into this repository's old Stow layout (including a registered checkout); regular files and unrelated symlinks remain untouched. Existing unmanaged files that conflict with the new tree must be reviewed and backed up before retrying. Do not use force flags to bypass those conflicts.

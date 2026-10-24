@@ -104,6 +104,11 @@ jobs:
           grep -q workstation-capture-brew /tmp/ujust-recipes
           grep -q workstation-image-sync /tmp/ujust-recipes
           podman run --rm localhost/workstation:${{ github.sha }} /usr/bin/mise --version
+          podman run --rm --env PATH=/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin \
+            localhost/workstation:${{ github.sha }} /usr/bin/zsh -f -c '
+              source /usr/share/workstation/dotfiles/.zshenv
+              [[ "$(whence -p mise)" == /usr/libexec/workstation/mise ]]
+            '
           podman run --rm --env HOME=/tmp/workstation-home \
             localhost/workstation:${{ github.sha }} bash -c '
               mkdir -p "$HOME"
