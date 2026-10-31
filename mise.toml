@@ -52,6 +52,7 @@ include = ["dotfiles/.config/mise/config.toml"]
 "brew-cask:font-sauce-code-pro-nerd-font" = "latest"
 "brew-cask:font-source-code-pro" = "latest"
 "brew-cask:font-ubuntu-nerd-font" = "latest"
+# Herdr TUI; bootstrap installs the separate desktop app and core runtime.
 "brew:herdr" = "latest"
 "brew:yazi" = "latest"
 "brew:wl-clipboard" = "latest"
@@ -62,5 +63,5 @@ include = ["dotfiles/.config/mise/config.toml"]
 "~" = { source = "dotfiles", mode = "symlink-each", exclude = ["**/.zcompdump*"] }
 
 [tasks.bootstrap]
-description = "Apply Aurora-specific login shell and desktop defaults"
-run = ["bash bootstrap/set-login-shell.sh", "bash bootstrap/set-terminal-defaults.sh"]
+description = "Install Herdr desktop/core and apply Aurora login shell and desktop defaults"
+run = ["bash bootstrap/install-herdr.sh", "bash bootstrap/set-login-shell.sh", "bash bootstrap/set-terminal-defaults.sh"]
