@@ -63,5 +63,5 @@ include = ["dotfiles/.config/mise/config.toml"]
 "~" = { source = "dotfiles", mode = "symlink-each", exclude = ["**/.zcompdump*"] }
 
 [tasks.bootstrap]
-description = "Install Herdr desktop/core and apply Aurora login shell and desktop defaults"
-run = ["bash bootstrap/install-herdr.sh", "bash bootstrap/set-login-shell.sh", "bash bootstrap/set-terminal-defaults.sh"]
+description = "Install Herdr, enable the shared SSH agent, and apply Aurora defaults"
+run = ["bash bootstrap/setup-ssh-agent.sh", "bash bootstrap/install-herdr.sh", "bash bootstrap/set-login-shell.sh", "bash bootstrap/set-terminal-defaults.sh"]
