@@ -4,15 +4,19 @@ on:
   push:
     paths:
       - "dotfiles/**"
-      - "packages/**"
       - "bootstrap/**"
-      - ".github/workflows/validate-dotfiles.yml"
+      - "tests/**"
+      - "mise.toml"
+      - "os/build_files/**"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "dotfiles/**"
-      - "packages/**"
       - "bootstrap/**"
-      - ".github/workflows/validate-dotfiles.yml"
+      - "tests/**"
+      - "mise.toml"
+      - "os/build_files/**"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
@@ -24,17 +28,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install validation tools
-        run: sudo apt-get update && sudo apt-get install -y shellcheck stow zsh
-      - name: Check shell and TOML syntax
         run: |
-          bash -n bootstrap/*.sh
+          sudo apt-get update
+          sudo apt-get install -y shellcheck zsh python3-yaml nodejs
+          bash bootstrap/install-mise.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Check shell, TOML, and workflow syntax
+        run: |
+          for script in bootstrap/*.sh; do bash -n "$script"; done
           shellcheck bootstrap/*.sh
-          for config in dotfiles/shell/.zshenv dotfiles/shell/.config/zsh/.zprofile dotfiles/shell/.config/zsh/.zshrc dotfiles/shell/.config/zsh/plugins.zsh dotfiles/zsh/.zshrc; do
+          for config in dotfiles/.zshenv dotfiles/.config/zsh/.zprofile dotfiles/.config/zsh/.zshrc dotfiles/.config/zsh/plugins.zsh; do
             zsh -n "$config"
           done
-          python3 -c 'import pathlib, tomllib; [tomllib.loads(p.read_text()) for p in pathlib.Path("dotfiles").rglob("*.toml")]'
-      - name: Check Stow structure
-        run: |
-          temp_home="$(mktemp -d)"
-          mapfile -t packages < <(awk '!/^#/ && NF {print $1}' packages/stow.txt)
-          stow --restow --no --verbose --dir "$PWD/dotfiles" --target "$temp_home" "${packages[@]}"
+          python3 - <<'PY'
+          import pathlib, tomllib, yaml
+          for path in [pathlib.Path('mise.toml'), *pathlib.Path('dotfiles').rglob('*.toml')]:
+              tomllib.loads(path.read_text())
+          for path in pathlib.Path('.github/workflows').glob('*.yml'):
+              yaml.safe_load(path.read_text())
+          PY
+      - name: Check safe deployment and legacy migration
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Check preview image retention safeguards
+        run: node tests/test_cleanup.mjs

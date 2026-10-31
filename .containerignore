@@ -1,0 +1,10 @@
+.git
+.agents
+.codex
+.aws
+cosign.key
+**/.zcompdump*
+**/__pycache__
+*.pem
+*.age
+.env*

@@ -1,3 +1,5 @@
 [user]
 	email = 60020423+sneakytowelsuit@users.noreply.github.com
 	name = Austin Stowe
+[include]
+	path = ~/.config/git/local.gitconfig

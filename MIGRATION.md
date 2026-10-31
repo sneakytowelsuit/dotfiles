@@ -2,7 +2,7 @@
 
 This is the one-time path for the Framework currently using this checkout at `/var/home/austinstowe/Development/dotfiles`. For a fresh installation, start with [README.md](README.md). Run the commands below in a terminal in **Plasma**. Keep Plasma available until Niri and the hardware checks pass.
 
-At the time this guide was written, the laptop booted stock `ghcr.io/ublue-os/aurora-dx:stable` with local `niri`, `niri-settings`, and `noctalia` RPM layers. The custom `ghcr.io/sneakytowelsuit/workstation:stable` image had built successfully and its Cosign signature had been verified. The login shell was Bash, bootstrap had not registered this checkout, and Stow would conflict with the existing `~/.gitconfig` and `~/.config/niri/config.kdl`. Check the current state before following a step if you have since changed the machine.
+At the time this guide was written, the laptop booted stock `ghcr.io/ublue-os/aurora-dx:stable` with local `niri`, `niri-settings`, and `noctalia` RPM layers. The custom `ghcr.io/sneakytowelsuit/workstation:stable` image had built successfully and its Cosign signature had been verified. The login shell was Bash, bootstrap had not registered this checkout, and Dotfile deployment would conflict with the existing `~/.gitconfig` and `~/.config/niri/config.kdl`. Check the current state before following a step if you have since changed the machine.
 
 ## 1. Preserve the existing home configuration
 
@@ -10,15 +10,15 @@ The repo's Niri config is intentionally minimal; the current home config is much
 
 ```bash
 cd /var/home/austinstowe/Development/dotfiles
-diff -u dotfiles/niri/.config/niri/config.kdl ~/.config/niri/config.kdl | less
+diff -u dotfiles/.config/niri/config.kdl ~/.config/niri/config.kdl | less
 ```
 
-If you want to keep the entire current Niri config, copy it into `dotfiles/niri/.config/niri/config.kdl` and review `git diff` before continuing. Otherwise, the tracked minimal config will become active. Preserve the existing files and clear the Stow targets:
+If you want to keep the entire current Niri config, copy it into `dotfiles/.config/niri/config.kdl` and review `git diff` before continuing. Otherwise, the tracked minimal config will become active. Preserve the existing files and clear the deployment targets:
 
 ```bash
 mkdir -p ~/.config/git
 mv -i ~/.gitconfig ~/.config/git/local.gitconfig
-mv -i ~/.config/niri/config.kdl ~/.config/niri/config.kdl.pre-stow
+mv -i ~/.config/niri/config.kdl ~/.config/niri/config.kdl.pre-mise
 ```
 
 The tracked `.gitconfig` includes `~/.config/git/local.gitconfig`, so your Git name and email remain available without being committed to this repo.
@@ -32,7 +32,7 @@ git config --global user.name
 getent passwd "$USER" | cut -d: -f7
 ```
 
-Bootstrap registers this checkout for the future `ujust` recipes, installs missing Brew formulae and Flatpaks, links the listed Stow packages, installs mise tools, and changes the login shell to Zsh. Aurora does not include `chsh`, so bootstrap uses `sudo usermod` there and may ask for your password. Sign out and back in before judging the interactive shell. If Stow reports another conflict, review and preserve that file, then rerun `./bootstrap/setup.sh`; it is designed to be repeatable. The `ujust workstation-sync` recipe will appear only after the custom image is booted.
+Bootstrap registers this checkout for the future `ujust` recipes, installs missing Brew formulae and Flatpaks, links the home-relative dotfile tree with mise, installs mise tools, and changes the login shell to Zsh. Aurora does not include `chsh`, so bootstrap uses `sudo usermod` there and may ask for your password. Sign out and back in before judging the interactive shell. If mise reports another conflict, review and preserve that file, then rerun `./bootstrap/setup.sh`; it is designed to be repeatable. The `ujust workstation-sync` recipe will appear only after the custom image is booted.
 
 ## 3. Remove the temporary RPM layers
 
@@ -77,10 +77,12 @@ getent passwd "$USER" | cut -d: -f7
 systemctl list-timers uupd.timer
 ```
 
-The booted image should be `ghcr.io/sneakytowelsuit/workstation:stable`, with no local RPM layers. `ujust` should list `workstation-sync` and `workstation-capture-brew`, and the login shell should end in `zsh`. The second bootstrap run reconciles user packages and links after the image switch. Use `ujust workstation-sync` for later Brewfile, Flatpak, and Stow changes. Aurora's `uupd.timer` was active before migration; check that it remains scheduled so future successful custom images are staged automatically.
+The booted image should be `ghcr.io/sneakytowelsuit/workstation:stable`, with no local RPM layers. `ujust` should list `workstation-sync` and `workstation-capture-brew`, and the login shell should end in `zsh`. The second bootstrap run reconciles user packages and links after the image switch. Use `ujust workstation-sync` for later mise package and dotfile changes. Aurora's `uupd.timer` was active before migration; check that it remains scheduled so future successful custom images are staged automatically.
 
 If the custom deployment is already booted, do not switch it again just to pick up bootstrap fixes. Pull this repository, rerun `./bootstrap/setup.sh`, and perform the checks above; bootstrap operates on the user environment and is intentionally repeatable.
 
 Then sign out, select **Niri** in SDDM, and check Noctalia, the launcher, Ghostty (`Mod+T`), Firefox, audio, brightness, lock, and logout. Check that Noctalia's terminal applications and Dolphin's **Open Terminal** action use Ghostty too. Foot remains installed as a fallback. If the booted image predates Ghostty, follow the [Ghostty rollout instructions](README.md#5-daily-use) before testing it; rerunning bootstrap alone does not update the host image. Confirm **Plasma** is still selectable. Repeat the [Framework hardware checklist](docs/framework-validation.md), particularly external display, 240 Hz, and suspend/resume.
 
-If Niri is unusable, log back into Plasma and fix the Stow-managed config. If the custom image itself fails, boot the previous deployment. The ignored `cosign.key` is not needed to use the image; keep it until you have verified its Bitwarden backup as described in [README.md](README.md). The pre-existing untracked `dotfiles/bash/` is outside `packages/stow.txt` and is not applied by bootstrap.
+If Niri is unusable, log back into Plasma and fix the mise-managed config. If the custom image itself fails, boot the previous deployment. The ignored `cosign.key` is not needed to use the image; keep it until you have verified its Bitwarden backup as described in [README.md](README.md).
+
+For an existing Stow-managed installation, sync removes only links into this repo’s old package directories before mise deploys the flattened `dotfiles/` tree. Regular files and unrelated links are preserved. See [feature-branch image testing](docs/preview-images.md) to try the migration before merging.

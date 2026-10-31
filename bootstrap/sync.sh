@@ -2,58 +2,32 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-if ! command -v brew >/dev/null 2>&1; then
-    if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    else
-        printf 'Homebrew is missing. Install Homebrew for Linux, then retry.\n' >&2
-        exit 1
-    fi
-fi
-
-# Bundle normally upgrades existing formulae; this command only adds missing ones.
-brew bundle install --no-upgrade --file "$root/packages/Brewfile"
-
-if [[ -s "$root/packages/flatpaks.txt" ]]; then
-    if ! command -v flatpak >/dev/null 2>&1; then
-        printf 'Flatpak is missing; cannot apply packages/flatpaks.txt.\n' >&2
-        exit 1
-    fi
-    remote_ready=false
-    while IFS= read -r app_id || [[ -n "$app_id" ]]; do
-        [[ -z "$app_id" || "$app_id" == \#* ]] && continue
-        if flatpak info "$app_id" >/dev/null 2>&1; then
-            continue
-        fi
-        if [[ "$remote_ready" == false ]]; then
-            flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-            remote_ready=true
-        fi
-        flatpak install --user --noninteractive flathub "$app_id"
-    done < "$root/packages/flatpaks.txt"
-fi
-
-if ! command -v stow >/dev/null 2>&1; then
-    printf 'GNU Stow is missing after Brewfile application.\n' >&2
+if (( $# > 1 )) || [[ $# == 1 && "$1" != --dry-run ]]; then
+    printf 'Usage: %s [--dry-run]\n' "$0" >&2
     exit 1
 fi
+export PATH="$HOME/.local/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$PATH"
+if ! command -v mise >/dev/null 2>&1; then
+    bash "$root/bootstrap/install-mise.sh"
+fi
+mise_bin="$(command -v mise)"
+[[ -x /usr/bin/mise ]] && mise_bin=/usr/bin/mise
 
-packages=()
-while IFS= read -r package || [[ -n "$package" ]]; do
-    [[ -z "$package" || "$package" == \#* ]] && continue
-    if [[ ! -d "$root/dotfiles/$package" ]]; then
-        printf 'Missing Stow package: %s\n' "$package" >&2
-        exit 1
-    fi
-    packages+=("$package")
-done < "$root/packages/stow.txt"
-
-if (( ${#packages[@]} > 0 )); then
-    stow --restow --no --verbose --dir "$root/dotfiles" --target "$HOME" "${packages[@]}"
-    stow --restow --dir "$root/dotfiles" --target "$HOME" "${packages[@]}"
+# Project configuration must be trusted explicitly; no shell hook applies it.
+"$mise_bin" trust "$root/mise.toml"
+if [[ "${1:-}" == --dry-run ]]; then
+    python3 "$root/bootstrap/migrate-stow.py" --root "$root" --dry-run
+    "$mise_bin" -C "$root" bootstrap --dry-run
+    exit 0
 fi
 
-bash "$root/bootstrap/set-terminal-defaults.sh"
-
-printf 'Brew, Flatpak, Stow, and terminal defaults are applied.\n'
+# Only remove links made by this repo's previous Stow layout, never user files.
+python3 "$root/bootstrap/migrate-stow.py" --root "$root"
+# Restore the home links before package downloads, so a network/package error
+# cannot leave migrated shell configuration missing.
+"$mise_bin" -C "$root" dotfiles apply
+if command -v flatpak >/dev/null 2>&1; then
+    flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+fi
+"$mise_bin" -C "$root" bootstrap
+printf 'Workstation packages, dotfiles, tools, and desktop defaults are applied.\n'

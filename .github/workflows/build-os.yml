@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - "os/**"
+      - "dotfiles/**"
+      - "bootstrap/**"
+      - "mise.toml"
+      - ".containerignore"
       - ".github/workflows/build-os.yml"
   schedule:
     - cron: "17 8 * * *"
@@ -14,7 +18,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: workstation-os-publish
+  group: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && 'workstation-stable-publish' || 'workstation-preview-publish-and-cleanup' }}
   cancel-in-progress: false
 
 jobs:
@@ -55,7 +59,7 @@ jobs:
 
   build:
     needs: check-base
-    if: needs.check-base.outputs.should_build == 'true' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: needs.check-base.outputs.should_build == 'true' && startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -63,8 +67,21 @@ jobs:
         env:
           SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
         run: test -n "$SIGNING_SECRET"
-      - name: Set image name
-        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/workstation" >> "$GITHUB_ENV"
+      - name: Set image name and channel
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [[ "$GITHUB_REF_NAME" == "$DEFAULT_BRANCH" ]]; then
+            package=workstation
+            channel=stable
+          else
+            package=workstation-preview
+            slug="$(printf '%s' "$GITHUB_REF_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-50)"
+            branch_hash="$(printf '%s' "$GITHUB_REF_NAME" | sha256sum | cut -c1-8)"
+            channel="test-${slug:-branch}-${branch_hash}"
+          fi
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/$package" >> "$GITHUB_ENV"
+          echo "CHANNEL=$channel" >> "$GITHUB_ENV"
       - name: Build current Aurora DX Stable
         env:
           BASE_DIGEST: ${{ needs.check-base.outputs.base_digest }}
@@ -72,17 +89,36 @@ jobs:
           podman build --pull=always \
             --build-arg "BASE_IMAGE=ghcr.io/ublue-os/aurora-dx@${BASE_DIGEST}" \
             --build-arg "BASE_DIGEST=${BASE_DIGEST}" \
-            --file os/Containerfile --tag localhost/workstation:${{ github.sha }} os
+            --build-arg "SOURCE_REPOSITORY=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --build-arg "SOURCE_REVISION=${GITHUB_SHA}" \
+            --file os/Containerfile --tag localhost/workstation:${{ github.sha }} .
       - name: Check workstation image
         run: |
           podman run --rm localhost/workstation:${{ github.sha }} rpm -q ghostty foot
           podman run --rm --env XDG_CONFIG_HOME=/tmp/config \
-            --volume "$PWD/dotfiles/terminal/.config/ghostty:/tmp/config/ghostty:ro" \
+            --volume "$PWD/dotfiles/.config/ghostty:/tmp/config/ghostty:ro" \
             localhost/workstation:${{ github.sha }} ghostty +validate-config
           podman run --rm localhost/workstation:${{ github.sha }} just --unstable --fmt --check --justfile /usr/share/ublue-os/just/60-custom.just
           podman run --rm localhost/workstation:${{ github.sha }} ujust --list > /tmp/ujust-recipes
           grep -q workstation-sync /tmp/ujust-recipes
           grep -q workstation-capture-brew /tmp/ujust-recipes
+          grep -q workstation-image-sync /tmp/ujust-recipes
+          podman run --rm localhost/workstation:${{ github.sha }} /usr/bin/mise --version
+          podman run --rm --env PATH=/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin \
+            localhost/workstation:${{ github.sha }} /usr/bin/zsh -f -c '
+              source /usr/share/workstation/dotfiles/.zshenv
+              [[ "$(whence -p mise)" == /usr/libexec/workstation/mise ]]
+            '
+          podman run --rm --env HOME=/tmp/workstation-home \
+            localhost/workstation:${{ github.sha }} bash -c '
+              mkdir -p "$HOME"
+              /usr/bin/mise trust /usr/share/workstation/mise.toml
+              /usr/bin/mise -C /usr/share/workstation dotfiles apply
+              test -L "$HOME/.config/niri/config.kdl"
+              test -L "$HOME/.config/mise/config.toml"
+              test ! -e /usr/share/workstation/cosign.key
+            '
+
       - name: Log in to GHCR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -90,7 +126,7 @@ jobs:
           mkdir -p "$HOME/.docker"
           printf '%s' "$GH_TOKEN" | podman login ghcr.io --authfile "$HOME/.docker/config.json" --username "$GITHUB_ACTOR" --password-stdin
       - name: Push commit image
-        run: podman push --authfile "$HOME/.docker/config.json" --digestfile /tmp/image-digest localhost/workstation:${{ github.sha }} "${IMAGE}:${{ github.sha }}"
+        run: podman push --authfile "$HOME/.docker/config.json" --digestfile /tmp/image-digest localhost/workstation:${{ github.sha }} "${IMAGE}:sha-${{ github.sha }}"
       - name: Install Cosign
         uses: sigstore/cosign-installer@v4.1.2
         with:
@@ -101,5 +137,23 @@ jobs:
         run: |
           digest="$(cat /tmp/image-digest)"
           cosign sign --yes --new-bundle-format=false --use-signing-config=false --registry-referrers-mode=legacy --key env://COSIGN_PRIVATE_KEY "${IMAGE}@${digest}"
-      - name: Publish stable tag
-        run: podman push --authfile "$HOME/.docker/config.json" localhost/workstation:${{ github.sha }} "${IMAGE}:stable"
+      - name: Publish channel tag
+        run: podman push --authfile "$HOME/.docker/config.json" localhost/workstation:${{ github.sha }} "${IMAGE}:${CHANNEL}"
+      - name: Write testing instructions
+        run: |
+          {
+            echo "Image: \`${IMAGE}:${CHANNEL}\`"
+            echo
+            echo '```bash'
+            echo "cosign verify --key cosign.pub --new-bundle-format=false ${IMAGE}:${CHANNEL}"
+            echo "sudo bootc switch ${IMAGE}:${CHANNEL}"
+            echo 'sudo systemctl reboot'
+            echo '# After reboot, apply the configuration bundled with this image:'
+            echo 'ujust workstation-image-sync'
+            echo '```'
+            if [[ "$CHANNEL" != stable ]]; then
+              echo 'Preview versions expire after 7 days, at the next hourly cleanup. Return to workstation:stable before expiry.'
+              echo 'The cleanup workflow must be installed on the default branch to enforce expiry.'
+              echo 'New GHCR packages start private. Make workstation-preview public in its package settings, or configure registry authentication before switching.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -7,10 +7,8 @@ Already running stock Aurora DX on this Framework? Follow the machine-specific [
 | Location | What it owns |
 | --- | --- |
 | `os/` | Custom bootc image, host RPMs, and system files |
-| `dotfiles/` | Home files linked with GNU Stow |
-| `packages/Brewfile` | User CLI tools |
-| `packages/flatpaks.txt` | GUI apps to install from Flathub |
-| `packages/stow.txt` | Stow packages to keep linked |
+| `mise.toml` | User CLI packages, fonts, Flatpaks, dotfile deployment, and setup tasks |
+| `dotfiles/` | A tree mirroring `$HOME`, linked file by file with mise |
 | `dev/` | Runtime defaults and project environment guidance |
 | `bootstrap/` | First setup and repeatable user sync |
 | `.github/` | Image builds and configuration checks |
@@ -43,32 +41,23 @@ git clone https://github.com/sneakytowelsuit/dotfiles.git ~/src/workstation
 cd ~/src/workstation
 ```
 
-Check Homebrew with `command -v brew`. If it is installed but missing from Bash's path, run:
-
-```bash
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-```
-
-If the binary does not exist, use the [official Homebrew installer](https://docs.brew.sh/Installation), read its prompts, then run the `brew shellenv` command above:
-
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-```
-
-The installer may ask for your password. This repository does not automate that system-level installer.
-
 Apply the repository:
 
 ```bash
 ./bootstrap/setup.sh
 ```
 
-Bootstrap registers this checkout at `~/.local/share/workstation/repo`, installs missing Brew formulae and Flatpaks, links the packages in `packages/stow.txt`, installs the declared mise runtimes, and changes the login shell to Zsh if the host already has Zsh. It is safe to rerun. Aurora does not ship `chsh`, so bootstrap falls back to its supported `sudo usermod` command and may ask for your password. The Brew step avoids intentional upgrades of existing formulae. The first Zsh session downloads the declared Zinit plugins.
+Bootstrap registers this checkout at `~/.local/share/workstation/repo`, ensures mise is available, configures the user Flathub remote, and runs `mise bootstrap`. The image includes a pinned mise binary; on an older host without mise, the helper downloads a pinned release and verifies its checksum. Update an existing older mise if the configuration reports a minimum-version error.
 
-If Stow reports a conflict, it has left the existing home file in place. Compare that file with its counterpart under `dotfiles/`. Save anything you want to keep in the repository or a backup, move the conflicting home file aside, and rerun `./bootstrap/setup.sh`. Do not use `stow --adopt` without reviewing what it would copy into Git. On an existing home, common conflicts are `~/.gitconfig` and `~/.config/niri/config.kdl`; a fresh install may have none.
+Interactive shells select the image's bundled mise even if an older Homebrew copy is still installed.
 
-On a machine with an existing `~/.gitconfig`, preserve its local identity settings before Stow links the repository version: `mkdir -p ~/.config/git && mv ~/.gitconfig ~/.config/git/local.gitconfig`. The tracked Git config includes that local file; it stays outside Git. For an existing Niri config, compare it with `dotfiles/niri/.config/niri/config.kdl`. Copy any settings you want to keep into the tracked file, then move the old home file aside before rerunning bootstrap. The tracked Niri config is intentionally minimal, so do not discard a working configuration without reviewing it.
+`mise.toml` declares Homebrew formulae, font casks, and user Flatpaks. Mise installs formulae directly into the standard Homebrew prefix; an existing Homebrew installation remains usable, but is not required. Creating that prefix may request sudo. Existing packages are not intentionally upgraded by sync. Runtime defaults and the three AI CLIs live in `dotfiles/.config/mise/config.toml`; those tools use mise's version management instead of Linux-incompatible application casks.
+
+Home files live at their actual home-relative paths: `dotfiles/.gitconfig`, `dotfiles/.zshenv`, and `dotfiles/.config/<application>/...`. There are no Stow package wrappers or package lists. A one-time migration removes only symlinks pointing into this repository's old Stow layout (including a registered checkout); regular files and unrelated symlinks remain untouched. Existing unmanaged files that conflict with the new tree must be reviewed and backed up before retrying. Do not use force flags to bypass those conflicts.
+
+Aurora omits `chsh`, so the bootstrap task retains the host-Zsh-only `sudo usermod` helper. The same task sets KDE's terminal defaults. The first interactive Zsh session downloads the Zinit plugins. Runtime installation and desktop settings run on every sync, with matching state left in place.
+
+To preview, use `./bootstrap/sync.sh --dry-run`. This also previews old Stow links that need removal; mise may report those links as conflicts until the real migration runs. For an existing regular `~/.gitconfig`, preserve its settings before linking: `mkdir -p ~/.config/git && mv ~/.gitconfig ~/.config/git/local.gitconfig`. Review any existing Niri configuration against `dotfiles/.config/niri/config.kdl` and preserve it before moving a conflicting target aside.
 
 At this point, stay in Plasma. The host packages and `ujust workstation-sync` arrive with the custom image in step 4. If stock Aurora does not provide Zsh, bootstrap will set the login shell when you rerun it after the image switch.
 
@@ -76,7 +65,7 @@ At this point, stay in Plasma. The host packages and `ujust workstation-sync` ar
 
 If this repository already has `cosign.pub` and a successful, publicly accessible `workstation:stable` image on GHCR, **skip key generation and go to step 4**. A new laptop uses the existing published image. Do not rotate the signing key merely because you reinstalled Aurora. If the package exists but is private, make it public as described below or configure registry credentials on the laptop before switching.
 
-For the **first publication**, the workflow needs a Cosign signing key. Cosign is declared in the Brewfile, so it should be available after step 2. From the repository root:
+For the **first publication**, the workflow needs a Cosign signing key. Cosign is declared in `mise.toml`, so it should be available after step 2. From the repository root:
 
 ```bash
 COSIGN_PASSWORD="" cosign generate-key-pair
@@ -106,9 +95,9 @@ Run this **once**; creating it again makes a duplicate vault item. Keep the key 
 
 In GitHub, open this repository → **Settings → Secrets and variables → Actions → New repository secret**. Name the secret `SIGNING_SECRET` and paste the contents of `cosign.key`. If you prefer the CLI, sign in with `gh auth login` and run `gh secret set SIGNING_SECRET --repo sneakytowelsuit/dotfiles < cosign.key`. Keep a secure backup of the private key in case the Actions secret must be recreated.
 
-Review `git status`, commit the intended repository files and `cosign.pub`, then push to the default branch. On a fresh clone where only the public key is new, use `git add cosign.pub`, `git commit -m "Add image signing public key"`, and `git push`. If Git asks for your identity, set `user.name` and `user.email` in the Stow-managed `dotfiles/git/.gitconfig` first. Enable Actions in GitHub if prompted. A push that changes `os/` or `.github/workflows/build-os.yml` starts the build. Otherwise open **Actions → Build workstation OS → Run workflow**. Wait for the **build** job to pass. If it fails, inspect its log and fix the repository before switching the laptop.
+Review `git status`, commit the intended repository files and `cosign.pub`, then push to the default branch. On a fresh clone where only the public key is new, use `git add cosign.pub`, `git commit -m "Add image signing public key"`, and `git push`. If Git asks for your identity, set `user.name` and `user.email` in `dotfiles/.gitconfig` first. Enable Actions in GitHub if prompted. A push that changes image files, dotfiles, bootstrap, or `mise.toml` starts the build. The default branch publishes stable; feature branches publish previews. Otherwise open **Actions → Build workstation OS → Run workflow**. Wait for the **build** job to pass. If it fails, inspect its log and fix the repository before switching the laptop.
 
-The workflow builds from the current `ghcr.io/ublue-os/aurora-dx:stable` digest, checks that the custom `ujust` recipe is present, signs the result, and then advances the `stable` tag. It also checks the base digest daily at 08:17 UTC and skips a scheduled build when the base is unchanged. A dotfile or Brewfile change does not rebuild the OS.
+The workflow builds from the current `ghcr.io/ublue-os/aurora-dx:stable` digest, checks that the custom `ujust` recipe is present, signs the result, and then advances the `stable` tag. It also checks the base digest daily at 08:17 UTC and skips a scheduled build when the base is unchanged. Dotfile and package changes also rebuild the image because it contains a configuration snapshot at `/usr/share/workstation`. They can still be applied from a checkout without rebooting.
 
 After the first successful build, find the `workstation` package under the `sneakytowelsuit` GitHub profile. To let the laptop pull updates without registry credentials, open **Package settings → Change visibility → Public**. [GitHub notes](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility) that this change cannot be reversed. Verify the published signature from the repository root:
 
@@ -160,7 +149,7 @@ ujust workstation-sync
 
 The second bootstrap run sets Zsh as the login shell if it was unavailable on stock Aurora. On Aurora it uses `sudo usermod` because `chsh` is not installed. Sign out and back in, then check `getent passwd "$USER" | cut -d: -f7`; it should end in `zsh`. At SDDM, select **Niri** and verify Noctalia, the launcher (`Mod+Space`), Ghostty (`Mod+T`), Firefox (`Mod+B`), volume, brightness, lock (`Mod+L`), and the session menu (`Mod+Shift+E`). Confirm Plasma remains selectable. Repeat [the hardware checklist](docs/framework-validation.md) on the custom image.
 
-On the custom image, `ujust workstation-sync` reads the registered checkout and applies new Brew, Flatpak, and Stow declarations. On stock Aurora, before that recipe exists, run the equivalent from this repository:
+On the custom image, `ujust workstation-sync` reads the registered checkout and applies the mise declarations. On stock Aurora, before that recipe exists, run the equivalent from this repository:
 
 ```bash
 WORKSTATION_REPO="$PWD" just --justfile os/build_files/60-custom.just workstation-sync
@@ -172,36 +161,49 @@ Make changes in this checkout, apply them, test, then commit and push:
 
 | Change | Edit | Apply |
 | --- | --- | --- |
-| GUI app | Add its Flathub ID to `packages/flatpaks.txt` | `ujust workstation-sync` |
-| User CLI | Add a formula to `packages/Brewfile` | `ujust workstation-sync` |
-| Home config | Edit a Stow-linked file or add a file to a listed package | `ujust workstation-sync` |
-| New Stow package | Add its directory under `dotfiles/` and name to `packages/stow.txt` | `ujust workstation-sync` |
-| Runtime default | Edit `dotfiles/mise/.config/mise/config.toml` | `mise install` |
+| GUI app | Add `"flatpak-user:APP_ID" = "latest"` to `mise.toml` | `ujust workstation-sync` |
+| User CLI or font | Add a `brew:` or `brew-cask:` entry to `mise.toml` | `ujust workstation-sync` |
+| Home config | Edit or add its home-relative path under `dotfiles/` | `ujust workstation-sync` |
+| Runtime or versioned CLI default | Edit `dotfiles/.config/mise/config.toml` | `ujust workstation-sync` |
 | Host RPM or system file | Edit `os/` after testing | Push; wait for a successful image build |
 | Project environment | Use a project mise file, devcontainer, or Distrobox | Apply in that project |
 
-If you installed a Homebrew package by hand while testing, run `ujust workstation-capture-brew`. It compares formulae explicitly installed on request and installed casks with `packages/Brewfile`, then shows numbered missing entries. Enter the numbers you want to keep (or `all`); Enter alone leaves the file unchanged. Review `git diff -- packages/Brewfile` before committing. Dependencies installed automatically by Homebrew are not offered. On stock Aurora, or before the new image with this recipe reaches the laptop, run `./bootstrap/capture-brew.sh` from this checkout instead. This command only adds selected entries to the Brewfile; `ujust workstation-sync` applies declarations in the other direction.
+`ujust workstation-sync` applies the registered checkout; with no registered checkout, it uses the image snapshot. `ujust workstation-image-sync` explicitly applies the booted image's snapshot without changing the registered checkout. Both use the same mise configuration. Bootstrap owns only declared files; edits elsewhere remain local.
 
-`ujust workstation-sync` installs declared items that are missing and restows links; it does not remove packages omitted from a list. Use `ujust update` when you want Aurora to update the system and existing apps. Aurora normally runs [automatic updates](https://docs.getaurora.dev/guides/basic-usage/); the laptop should follow the selected custom `:stable` image after switching. Check `rpm-ostree status -v` for automatic staging, or use `ujust toggle-updates` if updates were disabled. A staged image becomes active after the next reboot.
+From this checkout, inspect and apply declarations directly:
+
+```bash
+mise trust
+mise bootstrap --dry-run
+mise bootstrap status
+# Run the wrapper for migration and Flathub setup, then mise bootstrap:
+./bootstrap/sync.sh
+```
+
+To capture a manually installed formula, preview `mise bootstrap packages import --path mise.toml --dry-run`, then run it without `--dry-run` and review `git diff -- mise.toml`. It imports explicitly installed formulae, not dependencies, and does not import casks or offer numbered selection. `ujust workstation-capture-brew` remains a preview-only compatibility wrapper. When using the immutable image snapshot, make changes in a writable checkout instead.
+
+Sync installs missing packages without intentionally upgrading them or removing undeclared packages. Use `mise bootstrap packages upgrade` for declared Brew/Flatpak packages and `mise upgrade --global` for mise-managed tools; use `ujust update` for Aurora's normal system/app update path. Aurora normally runs [automatic updates](https://docs.getaurora.dev/guides/basic-usage/). Check `rpm-ostree status -v` for staging. A staged image becomes active after reboot.
+
+For a feature-branch build, follow [the preview image guide](docs/preview-images.md). Preview images expire after seven days; return to stable when testing finishes.
 
 For an uncertain host package, prototype with `sudo rpm-ostree install PACKAGE_NAME`, reboot and test it, then either uninstall it or add it to `os/Containerfile`. Once the new image works, remove the temporary local layer. Keep steady-state local layering near zero.
 
-Ghostty is the default terminal. The image installs it from the `scottames/ghostty` COPR documented in [Ghostty's Fedora installation guide](https://ghostty.org/docs/install/binary#fedora). Its Stow-managed configuration lives at `dotfiles/terminal/.config/ghostty/config`. Niri opens it with `Mod+T` and exports `TERMINAL=ghostty` for Noctalia's terminal applications. Bootstrap and `ujust workstation-sync` set KDE's terminal application and desktop service in `kdeglobals`, preserving its other settings. Foot remains installed; `Mod+T` opens Foot when Ghostty is unavailable, and sync leaves KDE's current terminal default alone until Ghostty is installed.
+Ghostty is the default terminal. The image installs it from the `scottames/ghostty` COPR documented in [Ghostty's Fedora installation guide](https://ghostty.org/docs/install/binary#fedora). Its configuration lives at `dotfiles/.config/ghostty/config`. Niri opens it with `Mod+T` and exports `TERMINAL=ghostty` for Noctalia's terminal applications. Bootstrap and `ujust workstation-sync` set KDE's terminal application and desktop service in `kdeglobals`, preserving its other settings. Foot remains installed; `Mod+T` opens Foot when Ghostty is unavailable, and sync leaves KDE's current terminal default alone until Ghostty is installed.
 
 To adopt Ghostty on an existing workstation, commit and push the image changes and wait for **Build workstation OS** to succeed. Then run `sudo bootc upgrade`, reboot into the updated image, and run `ujust workstation-sync`. Sign out and back in if Niri or Noctalia was already running when you applied the configuration, so Noctalia inherits the terminal environment. Check `ghostty +validate-config`, `Mod+T`, a terminal application launched through Noctalia, and Dolphin's **Open Terminal** action. Sync alone cannot install the host RPM.
 
-Zsh is for interactive sessions; scripts remain Bash. Bootstrap and `ujust workstation-sync` link `dotfiles/zsh/.zshrc` to `~/.zshrc`. Edit that file for interactive settings. The managed `~/.zshenv` sets `ZDOTDIR=~/.config/zsh`, whose `.zshrc` forwards to `~/.zshrc` so login and non-login interactive Zsh shells both load it. After applying changes, open a new terminal or run `exec zsh`; sign out and back in if the login shell was just changed. If an existing `~/.zshrc` causes a Stow conflict, merge or back it up and move it aside before retrying sync.
+Zsh is for interactive sessions; scripts remain Bash. `dotfiles/.zshenv` sets `ZDOTDIR=~/.config/zsh`, and the interactive configuration now lives directly at `dotfiles/.config/zsh/.zshrc`. There is no forwarding `~/.zshrc`. The login profile adds mise shims for editors; the interactive file activates mise and initializes Starship, Zoxide, and Atuin. Keep these activation lines in the tracked files: mise's generic shell shortcut ignores `ZDOTDIR`.
 
-The Stow-managed Zsh configuration uses Zinit for completions, fzf-tab, autosuggestions, and syntax highlighting, with native vi mode. The repository does not create project devcontainers or Distroboxes automatically; each project owns those environments.
+Zinit handles completions, fzf-tab, autosuggestions, and syntax highlighting, with native vi mode. Each project owns its devcontainers and Distroboxes.
 
-In Niri, the Framework F12 logo action opens Noctalia's application launcher, and the F9 display action (Super+P) opens its Niri Displays panel. Depending on Fn lock, hold Fn to access these actions. The Stow-managed Noctalia config enables `raycursive/niri-displays` from the built-in community source. Bootstrap and `ujust workstation-sync` apply these declarations without an OS rebuild. Noctalia downloads the plugin; if the panel is unavailable after first enabling it, restart Noctalia or sign out and back in (required in testing with Noctalia 5.1.0). The panel changes display settings temporarily; keep permanent resolution, refresh rate, scale, and placement defaults in `dotfiles/niri/.config/niri/config.kdl`.
+In Niri, the Framework F12 logo action opens Noctalia's application launcher, and the F9 display action (Super+P) opens its Niri Displays panel. Depending on Fn lock, hold Fn to access these actions. The Noctalia config enables `raycursive/niri-displays` from the built-in community source. Bootstrap and `ujust workstation-sync` apply these declarations without an OS rebuild. Noctalia downloads the plugin; if the panel is unavailable after first enabling it, restart Noctalia or sign out and back in (required in testing with Noctalia 5.1.0). The panel changes display settings temporarily; keep permanent resolution, refresh rate, scale, and placement defaults in `dotfiles/.config/niri/config.kdl`.
 
 ## Recovery
 
 - Niri or Noctalia fails: sign out and choose **Plasma** in SDDM. Check `niri validate --config ~/.config/niri/config.kdl` and Noctalia's log at `~/.cache/noctalia/noctalia.log`.
 - New image fails to boot or breaks hardware: choose the previous deployment in the boot menu. From a working boot, `sudo bootc rollback` stages the previous deployment.
 - Bad permanent host change: revert the Git change in `os/`, push, wait for a successful rebuild, and reboot after the new image stages.
-- A sync stops on Stow conflicts: preserve or merge the existing home file, move the conflicting target aside, and rerun `ujust workstation-sync`. The script does not overwrite it automatically.
+- A sync stops on dotfile conflicts: preserve or merge the existing home file, move the conflicting target aside, and rerun `ujust workstation-sync`. The script does not overwrite it automatically.
 - Image build fails: the published `:stable` tag stays on the last successful build. Read the GitHub Actions log; the laptop continues using its last available image.
 
 Keep a previous deployment until Niri, Plasma, and the Framework hardware checks pass on the new one.

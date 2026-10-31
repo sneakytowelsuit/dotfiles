@@ -2,7 +2,11 @@ ARG BASE_IMAGE=ghcr.io/ublue-os/aurora-dx:stable
 FROM ${BASE_IMAGE}
 
 ARG BASE_DIGEST
+ARG SOURCE_REPOSITORY=https://github.com/sneakytowelsuit/dotfiles
+ARG SOURCE_REVISION
 LABEL io.workstation.base-digest="${BASE_DIGEST}"
+LABEL org.opencontainers.image.source="${SOURCE_REPOSITORY}"
+LABEL org.opencontainers.image.revision="${SOURCE_REVISION}"
 
 # Plasma and SDDM are inherited from Aurora. Keep Foot as a fallback.
 # Ghostty's documented Fedora package is maintained in this COPR.
@@ -10,4 +14,15 @@ RUN dnf5 -y copr enable scottames/ghostty && \
     dnf5 install -y niri noctalia niri-settings zsh ghostty foot && \
     dnf5 clean all
 
-COPY build_files/60-custom.just /usr/share/ublue-os/just/60-custom.just
+# Build from the repository root. Copy only public configuration, never the
+# checkout as a whole (which could contain an ignored signing key).
+COPY bootstrap/install-mise.sh /tmp/install-mise.sh
+# Aurora redirects /usr/local into /var; image-managed binaries belong in /usr.
+RUN bash /tmp/install-mise.sh /usr/bin/mise && \
+    mkdir -p /usr/libexec/workstation && \
+    ln -s /usr/bin/mise /usr/libexec/workstation/mise && \
+    rm /tmp/install-mise.sh
+COPY os/build_files/60-custom.just /usr/share/ublue-os/just/60-custom.just
+COPY mise.toml /usr/share/workstation/mise.toml
+COPY bootstrap/ /usr/share/workstation/bootstrap/
+COPY dotfiles/ /usr/share/workstation/dotfiles/
