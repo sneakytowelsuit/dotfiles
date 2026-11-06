@@ -10,3 +10,5 @@ path=("$HOME/.local/bin" /usr/local/bin /home/linuxbrew/.linuxbrew/bin /home/lin
 if [[ -x /usr/libexec/workstation/mise ]]; then
     path=(/usr/libexec/workstation $path)
 fi
+# herdr-core can start with NO_COLOR set, which turns off color in its terminals.
+unset NO_COLOR
