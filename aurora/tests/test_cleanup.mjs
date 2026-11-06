@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const workflow = readFileSync(new URL('../.github/workflows/cleanup-preview-images.yml', import.meta.url), 'utf8');
+const workflow = readFileSync(new URL('../../.github/workflows/cleanup-preview-images.yml', import.meta.url), 'utf8');
 const source = workflow.split('          script: |\n')[1].split('\n').map(line => line.slice(12)).join('\n');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const execute = new AsyncFunction('github', 'context', 'core', 'process', source);

@@ -1,22 +1,26 @@
-name: Validate workstation configuration
+name: Validate Aurora configuration
 
 on:
   push:
     paths:
-      - "dotfiles/**"
-      - "bootstrap/**"
-      - "tests/**"
-      - "mise.toml"
-      - "os/build_files/**"
-      - ".github/workflows/**"
+      - "aurora/dotfiles/**"
+      - "aurora/bootstrap/**"
+      - "aurora/tests/**"
+      - "aurora/mise.toml"
+      - "aurora/os/build_files/**"
+      - ".github/workflows/build-os.yml"
+      - ".github/workflows/cleanup-preview-images.yml"
+      - ".github/workflows/validate-dotfiles.yml"
   pull_request:
     paths:
-      - "dotfiles/**"
-      - "bootstrap/**"
-      - "tests/**"
-      - "mise.toml"
-      - "os/build_files/**"
-      - ".github/workflows/**"
+      - "aurora/dotfiles/**"
+      - "aurora/bootstrap/**"
+      - "aurora/tests/**"
+      - "aurora/mise.toml"
+      - "aurora/os/build_files/**"
+      - ".github/workflows/build-os.yml"
+      - ".github/workflows/cleanup-preview-images.yml"
+      - ".github/workflows/validate-dotfiles.yml"
   workflow_dispatch:
 
 permissions:
@@ -25,6 +29,9 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: aurora
     steps:
       - uses: actions/checkout@v4
       - name: Install validation tools
@@ -44,7 +51,7 @@ jobs:
           import pathlib, tomllib, yaml
           for path in [pathlib.Path('mise.toml'), *pathlib.Path('dotfiles').rglob('*.toml')]:
               tomllib.loads(path.read_text())
-          for path in pathlib.Path('.github/workflows').glob('*.yml'):
+          for path in pathlib.Path('../.github/workflows').glob('*.yml'):
               yaml.safe_load(path.read_text())
           PY
       - name: Check safe deployment and legacy migration

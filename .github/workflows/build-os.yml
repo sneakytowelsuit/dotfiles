@@ -3,11 +3,11 @@ name: Build workstation OS
 on:
   push:
     paths:
-      - "os/**"
-      - "dotfiles/**"
-      - "bootstrap/**"
-      - "mise.toml"
-      - ".containerignore"
+      - "aurora/os/**"
+      - "aurora/dotfiles/**"
+      - "aurora/bootstrap/**"
+      - "aurora/mise.toml"
+      - "aurora/.containerignore"
       - ".github/workflows/build-os.yml"
   schedule:
     - cron: "17 8 * * *"
@@ -91,12 +91,12 @@ jobs:
             --build-arg "BASE_DIGEST=${BASE_DIGEST}" \
             --build-arg "SOURCE_REPOSITORY=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --build-arg "SOURCE_REVISION=${GITHUB_SHA}" \
-            --file os/Containerfile --tag localhost/workstation:${{ github.sha }} .
+            --file aurora/os/Containerfile --tag localhost/workstation:${{ github.sha }} aurora
       - name: Check workstation image
         run: |
           podman run --rm localhost/workstation:${{ github.sha }} rpm -q ghostty foot
           podman run --rm --env XDG_CONFIG_HOME=/tmp/config \
-            --volume "$PWD/dotfiles/.config/ghostty:/tmp/config/ghostty:ro" \
+            --volume "$PWD/aurora/dotfiles/.config/ghostty:/tmp/config/ghostty:ro" \
             localhost/workstation:${{ github.sha }} ghostty +validate-config
           podman run --rm localhost/workstation:${{ github.sha }} just --unstable --fmt --check --justfile /usr/share/ublue-os/just/60-custom.just
           podman run --rm localhost/workstation:${{ github.sha }} ujust --list > /tmp/ujust-recipes
@@ -145,7 +145,7 @@ jobs:
             echo "Image: \`${IMAGE}:${CHANNEL}\`"
             echo
             echo '```bash'
-            echo "cosign verify --key cosign.pub --new-bundle-format=false ${IMAGE}:${CHANNEL}"
+            echo "cosign verify --key aurora/cosign.pub --new-bundle-format=false ${IMAGE}:${CHANNEL}"
             echo "sudo bootc switch ${IMAGE}:${CHANNEL}"
             echo 'sudo systemctl reboot'
             echo '# After reboot, apply the configuration bundled with this image:'

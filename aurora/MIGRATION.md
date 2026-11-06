@@ -1,6 +1,6 @@
 # Migrate this Framework to the workstation image
 
-This is the one-time path for the Framework currently using this checkout at `/var/home/austinstowe/Development/dotfiles`. For a fresh installation, start with [README.md](README.md). Run the commands below in a terminal in **Plasma**. Keep Plasma available until Niri and the hardware checks pass.
+This is the one-time path for the Framework currently using this checkout at `/var/home/austinstowe/Development/dotfiles/aurora`. For a fresh installation, start with [README.md](README.md). Run the commands below in a terminal in **Plasma**. Keep Plasma available until Niri and the hardware checks pass.
 
 At the time this guide was written, the laptop booted stock `ghcr.io/ublue-os/aurora-dx:stable` with local `niri`, `niri-settings`, and `noctalia` RPM layers. The custom `ghcr.io/sneakytowelsuit/workstation:stable` image had built successfully and its Cosign signature had been verified. The login shell was Bash, bootstrap had not registered this checkout, and Dotfile deployment would conflict with the existing `~/.gitconfig` and `~/.config/niri/config.kdl`. Check the current state before following a step if you have since changed the machine.
 
@@ -9,7 +9,7 @@ At the time this guide was written, the laptop booted stock `ghcr.io/ublue-os/au
 The repo's Niri config is intentionally minimal; the current home config is much larger. Compare them and copy any settings you want to keep into the tracked file before moving the home file. The existing Git config contains your commit identity, which the tracked config will load from a local include file.
 
 ```bash
-cd /var/home/austinstowe/Development/dotfiles
+cd /var/home/austinstowe/Development/dotfiles/aurora
 diff -u dotfiles/.config/niri/config.kdl ~/.config/niri/config.kdl | less
 ```
 
@@ -55,7 +55,7 @@ If the packages are already absent, skip the uninstall and its reboot. See [boot
 ## 4. Verify and switch to the published image
 
 ```bash
-cd /var/home/austinstowe/Development/dotfiles
+cd /var/home/austinstowe/Development/dotfiles/aurora
 cosign verify --key cosign.pub --new-bundle-format=false ghcr.io/sneakytowelsuit/workstation:stable
 sudo bootc switch ghcr.io/sneakytowelsuit/workstation:stable
 sudo systemctl reboot
@@ -68,7 +68,7 @@ The signature check verifies the image against the public key in Git. The switch
 Log into Plasma first and run:
 
 ```bash
-cd /var/home/austinstowe/Development/dotfiles
+cd /var/home/austinstowe/Development/dotfiles/aurora
 sudo bootc status
 rpm-ostree status -v
 ./bootstrap/setup.sh

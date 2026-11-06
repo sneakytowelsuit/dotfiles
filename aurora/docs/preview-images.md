@@ -1,6 +1,6 @@
 # Test a feature-branch workstation image
 
-Push a branch to this repository, or dispatch **Build workstation OS** with that branch selected. Changes to `os/`, `bootstrap/`, `dotfiles/`, `mise.toml`, the build workflow, or `.containerignore` trigger builds. Publishing uses repository secrets, so fork pull requests do not publish images.
+Push a branch to this repository, or dispatch **Build workstation OS** with that branch selected. Changes to `aurora/os/`, `aurora/bootstrap/`, `aurora/dotfiles/`, `aurora/mise.toml`, the build workflow, or `aurora/.containerignore` trigger builds. Publishing uses repository secrets, so fork pull requests do not publish images.
 
 The default branch alone publishes `ghcr.io/sneakytowelsuit/workstation:stable`. Feature branches publish to the separate `ghcr.io/sneakytowelsuit/workstation-preview` package, using a tag such as `test-feat-mise-workstation-<branch-hash>` and an immutable `sha-<commit>` tag. Sanitized branch names include a hash to avoid collisions. Each successful build's Actions summary gives the exact image and commands. A failed build never advances its channel tag.
 

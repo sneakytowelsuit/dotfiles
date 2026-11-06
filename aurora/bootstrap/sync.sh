@@ -2,6 +2,10 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! command -v bootc >/dev/null 2>&1; then
+    printf 'This sync expects an Aurora/bootc workstation.\n' >&2
+    exit 1
+fi
 if (( $# > 1 )) || [[ $# == 1 && "$1" != --dry-run ]]; then
     printf 'Usage: %s [--dry-run]\n' "$0" >&2
     exit 1
