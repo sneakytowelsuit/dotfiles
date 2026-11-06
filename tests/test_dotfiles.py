@@ -42,9 +42,29 @@ class DotfilesTest(unittest.TestCase):
         self.run_mise("dotfiles", "apply")
         self.run_mise("dotfiles", "apply")
         for path in (".gitconfig", ".zshenv", ".config/zsh/.zshrc",
-                     ".config/niri/config.kdl", ".config/mise/config.toml"):
+                     ".config/zsh/.zshenv", ".config/niri/config.kdl",
+                     ".config/mise/config.toml", ".ssh/config"):
             self.assertEqual((self.home / path).resolve(), ROOT / "dotfiles" / path)
         self.assertFalse((self.home / ".config/zsh/.zcompdump").exists())
+
+    @unittest.skipUnless(MISE, "mise is required")
+    def test_ssh_config_deployment_preserves_existing_keys_and_permissions(self):
+        ssh_dir = self.home / ".ssh"
+        ssh_dir.mkdir(mode=0o700)
+        private_key = ssh_dir / "id_ed25519"
+        private_key.write_text("test key placeholder; never a real private key\n")
+        private_key.chmod(0o600)
+        known_hosts = ssh_dir / "known_hosts"
+        known_hosts.write_text("existing trusted hosts\n")
+        self.run_mise("trust", str(ROOT / "mise.toml"))
+        self.run_mise("dotfiles", "apply")
+        self.run_mise("dotfiles", "apply")
+        self.assertEqual(private_key.read_text(), "test key placeholder; never a real private key\n")
+        self.assertFalse(private_key.is_symlink())
+        self.assertEqual(private_key.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(ssh_dir.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(known_hosts.read_text(), "existing trusted hosts\n")
+        self.assertEqual((ssh_dir / "config").resolve(), ROOT / "dotfiles/.ssh/config")
 
     @unittest.skipUnless(MISE, "mise is required")
     def test_unmanaged_file_is_preserved(self):
