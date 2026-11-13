@@ -1,4 +1,0 @@
-# Noctalia v5 defaults provide the initial shell. Add tested overrides here.
-
-[plugins]
-enabled = ["raycursive/niri-displays"]

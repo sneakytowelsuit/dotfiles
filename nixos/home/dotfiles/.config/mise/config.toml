@@ -1,8 +1,0 @@
-[tools]
-node = "lts"
-python = "3.13"
-uv = "latest"
-rust = "latest"
-claude-code = "latest"
-codex = "latest"
-copilot = "latest"

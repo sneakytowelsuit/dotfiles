@@ -7,3 +7,7 @@ cosign.key
 !*.env.example
 **/.config/zsh/.zcompdump*
 __pycache__/
+
+# nix build output
+result
+result-*

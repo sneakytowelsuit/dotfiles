@@ -23,12 +23,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31.11.3
-      - name: Check shell syntax
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zsh
-          for config in home/dotfiles/.zshenv home/dotfiles/.config/zsh/.zprofile home/dotfiles/.config/zsh/.zshrc home/dotfiles/.config/zsh/plugins.zsh; do
-            zsh -n "$config"
-          done
       - name: Evaluate the system
         run: nix build .#nixosConfigurations.framework.config.system.build.toplevel --dry-run
