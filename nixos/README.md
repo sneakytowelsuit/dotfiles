@@ -5,14 +5,22 @@ Flake-based NixOS configurations, with Home Manager as a NixOS module. Everythin
 ## Apply
 
 ```sh
-sudo nixos-rebuild switch --flake ~/Development/dotfiles/nixos#framework
+sudo nixos-rebuild switch
 ```
+
+`/etc/nixos` is a symlink to this directory, and `nixos-rebuild` uses `/etc/nixos/flake.nix` by default, picking the configuration named after the hostname. On a new machine, create the link once:
+
+```sh
+sudo ln -s ~/Development/dotfiles/nixos /etc/nixos   # move any existing /etc/nixos aside first
+```
+
+The explicit form still works anywhere: `sudo nixos-rebuild switch --flake ~/Development/dotfiles/nixos#framework`.
 
 ## Update packages
 
 ```sh
 nix flake update --flake ~/Development/dotfiles/nixos   # bumps flake.lock
-sudo nixos-rebuild switch --flake ~/Development/dotfiles/nixos#framework
+sudo nixos-rebuild switch
 ```
 
 Commit `flake.lock` afterwards; it records the exact versions the system was built from. Run `nix fmt` to format all `.nix` files.
@@ -42,7 +50,8 @@ New files must be `git add`ed before rebuilding: flakes only see files git track
 1. On the new machine: `nixos-generate-config --show-hardware-config > hosts/<name>/hardware-configuration.nix`
 2. Create `hosts/<name>/default.nix` importing the modules it needs (copy `hosts/framework/default.nix` and trim). Set `system.stateVersion` and `home-manager.users.austin.home.stateVersion` to the release it was installed with.
 3. Add `<name> = mkHost "<name>";` to `nixosConfigurations` in `flake.nix`.
-4. `sudo nixos-rebuild switch --flake .#<name>`
+4. First build: `sudo nixos-rebuild switch --flake .#<name>` (this also sets the hostname).
+5. Link `/etc/nixos` to the checkout as described under Apply; after that, plain `sudo nixos-rebuild switch` works.
 
 ## Doom Emacs
 
