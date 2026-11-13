@@ -15,16 +15,51 @@
     enable = true;
     doomDir = ./doom;
     emacs = pkgs.emacs-pgtk; # native Wayland build (sharper on GNOME)
-    # Programs Doom's modules call out to, put on Emacs' PATH.
+
+    # Every tree-sitter grammar, prebuilt against this Emacs, so no
+    # "install grammar?" prompts (used by the +tree-sitter flags in init.el).
+    extraPackages = epkgs: [ epkgs.treesit-grammars.with-all-grammars ];
+
+    # Programs Doom's modules call out to, put on Emacs' PATH only. The names
+    # are the ones eglot looks for. Compilers/runtimes (cargo, node, jdk...)
+    # are left to each project's devShell so versions match the project.
     extraBinPackages = with pkgs; [
+      # Doom core
       git
       ripgrep
       fd
-      nixd # Nix language server (:lang nix +lsp)
-      nixfmt # Nix formatter (:editor format)
-      bash-language-server # (:lang sh +lsp)
+
+      # Nix
+      nixd
+      nixfmt
+      # Shell
+      bash-language-server
       shellcheck
       shfmt
+      # Go (gopls needs the go toolchain; gofmt comes with it)
+      gopls
+      go
+      # Rust
+      rust-analyzer
+      rustfmt
+      # JavaScript / TypeScript
+      typescript-language-server
+      typescript
+      prettier # also formats JSON, YAML, Markdown, HTML, CSS
+      # Python
+      pyright
+      black
+      # C / C++ (clangd, clang-format)
+      clang-tools
+      # Lua
+      lua-language-server
+      stylua
+      # Config and markup files
+      vscode-langservers-extracted # JSON, HTML, CSS, ESLint
+      yaml-language-server
+      tombi # TOML
+      marksman # Markdown
+      dockerfile-language-server
     ];
   };
 

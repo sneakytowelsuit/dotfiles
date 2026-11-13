@@ -45,6 +45,19 @@
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
 (setq display-line-numbers-type 'relative)
 
+;; Fill gaps in eglot's built-in language server list for the modes Doom uses.
+;; The servers themselves are installed by emacs.nix.
+(after! eglot
+  ;; (nix +tree-sitter) uses nix-ts-mode; eglot only knows nix-mode.
+  (add-to-list 'eglot-server-programs '((nix-mode nix-ts-mode) . ("nixd")))
+  ;; :lang web opens HTML in web-mode; eglot only knows html-mode.
+  (add-to-list 'eglot-server-programs
+               '((web-mode :language-id "html")
+                 . ("vscode-html-language-server" "--stdio"))))
+
+;; Doom's :lang data has no tree-sitter flag; use the TOML grammar anyway.
+(add-to-list 'major-mode-remap-alist '(conf-toml-mode . toml-ts-mode))
+
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/org/")
