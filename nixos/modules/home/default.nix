@@ -10,6 +10,7 @@
     ./git.nix
     ./emacs.nix
     ./shell.nix
+    ./terminal.nix
     ./vscode.nix
   ];
 

@@ -31,7 +31,7 @@
   };
 
   outputs =
-    { nixpkgs, ... }@inputs:
+    { self, nixpkgs, ... }@inputs:
     let
       # One line per machine: hosts/<name>/default.nix holds everything
       # specific to it; the hostname comes from the attribute name.
@@ -49,6 +49,16 @@
     {
       nixosConfigurations = {
         framework = mkHost "framework";
+      };
+
+      # Packages this repo defines itself (pkgs/<name>/package.nix). The overlay
+      # adds them to `pkgs` in every host (applied in modules/nixos/base.nix);
+      # `packages` lets you build one alone, e.g. `nix build .#herdr-app`.
+      overlays.default = final: _prev: {
+        herdr-app = final.callPackage ./pkgs/herdr-app/package.nix { };
+      };
+      packages.x86_64-linux = {
+        inherit (nixpkgs.legacyPackages.x86_64-linux.extend self.overlays.default) herdr-app;
       };
 
       # `nix fmt` formats every .nix file in the repo.

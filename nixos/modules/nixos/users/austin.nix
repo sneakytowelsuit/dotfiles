@@ -13,6 +13,10 @@
       "wheel"
     ];
     shell = pkgs.zsh;
+    # Keep the user's systemd services running after logout, so herdr-core's
+    # terminals and agents survive it (herdr-core would otherwise enable this
+    # itself, outside Nix).
+    linger = true;
   };
 
   # Needed for a login shell: registers zsh in /etc/shells and sets up

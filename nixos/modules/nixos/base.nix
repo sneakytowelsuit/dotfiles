@@ -1,7 +1,11 @@
 # Settings every machine gets, desktop or not.
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 
 {
+  # Adds this repo's own packages (pkgs/) to `pkgs`. Home Manager shares this
+  # pkgs (useGlobalPkgs), so they're available there too.
+  nixpkgs.overlays = [ inputs.self.overlays.default ];
+
   nix.settings = {
     experimental-features = [
       "nix-command"
