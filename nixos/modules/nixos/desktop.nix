@@ -1,13 +1,9 @@
-# GNOME desktop with sound and printing.
+# What every graphical session needs, whichever desktop runs on top:
+# the GDM login screen (it lists every installed session), sound and
+# printing. Keyboard behaviour is in keyboard.nix; the desktops themselves
+# live in gnome.nix, hyprland.nix, ...
 {
   services.displayManager.gdm.enable = true;
-  services.desktopManager.gnome.enable = true;
-
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
-    options = "ctrl:swapcaps"; # swap Caps Lock and Ctrl
-  };
 
   services.printing.enable = true;
 

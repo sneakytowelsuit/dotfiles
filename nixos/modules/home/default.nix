@@ -8,6 +8,7 @@
     inputs.zen-browser.homeModules.beta
     ./agents.nix
     ./git.nix
+    ./hyprland.nix
     ./emacs.nix
     ./shell.nix
     ./terminal.nix
