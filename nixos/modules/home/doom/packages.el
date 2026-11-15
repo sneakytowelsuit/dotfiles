@@ -1,12 +1,22 @@
 ;;; $DOOMDIR/packages.el -*- lexical-binding: t; no-byte-compile: t -*-
 
-;; To install a package:
+;; To install a package (this Doom is built by Nix, so there is no 'doom sync'):
 ;;
-;;   1. Declare them here in a `package!' statement,
-;;   2. Run 'doom sync' in the shell,
-;;   3. Restart Emacs.
+;;   1. Declare it here in a `package!' statement (configure it in config.el),
+;;   2. Rebuild NixOS: sudo nixos-rebuild switch
+;;      (Nix fetches and builds it; a wrong name fails the rebuild),
+;;   3. Restart Emacs: systemctl --user restart emacs
 ;;
-;; Use 'C-h f package\!' to look up documentation for the `package!' macro.
+;; Versions are pinned by flake.lock. Use 'C-h f package\!' to look up
+;; documentation for the `package!' macro.
+
+;; Vimtutor for evil: an interactive lesson in Vim-style editing.
+;; Start it with M-x evil-tutor-start.
+(package! evil-tutor)
+
+;; Tangle org files on save. Opt-in per file: put `#+auto_tangle: t' near the
+;; top of an org file (settings in config.el).
+(package! org-auto-tangle)
 
 
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:

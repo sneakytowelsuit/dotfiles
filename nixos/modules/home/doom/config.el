@@ -62,6 +62,22 @@
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/org/")
 
+;; Indent guides (:ui indent-guides in init.el, drawn by the indent-bars
+;; package). Doom makes them one subtle grey; colour each depth differently
+;; instead ("rainbow"), using the theme's outline-1..8 heading colours, and
+;; make the depth the cursor is in stand out.
+(after! indent-bars
+  (setq indent-bars-color-by-depth '(:regexp "outline-\\([0-9]+\\)" :blend 1)
+        indent-bars-highlight-current-depth '(:blend 0.5)))
+
+;; Tangling: `SPC m b t' (org-babel-tangle) writes an org file's source blocks
+;; out to the files named in their `:tangle' headers. org-auto-tangle does it
+;; on every save, in the background, for files that opt in with this line
+;; near the top:
+;;   #+auto_tangle: t
+(use-package! org-auto-tangle
+  :hook (org-mode . org-auto-tangle-mode))
+
 
 ;; Whenever you reconfigure a package, make sure to wrap your config in an
 ;; `with-eval-after-load' block, otherwise Doom's defaults may override your
