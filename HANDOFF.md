@@ -1,6 +1,6 @@
 # Handoff: NixOS setup → learning Emacs and trying window managers
 
-Written 2026-11-12, at commit `30bdca6` on `main`. It is for a new agent (or future me) picking this up cold. Read it fully before changing anything; `nixos/README.md` covers day-to-day commands.
+Written 2026-11-12 at commit `30bdca6`; updated 2026-11-14 after the terminal, Hyprland and keyboard work. It is for a new agent (or future me) picking this up cold. Read it fully before changing anything; `nixos/README.md` covers day-to-day commands.
 
 ## Who this is for and how to work with them
 
@@ -14,8 +14,10 @@ Written 2026-11-12, at commit `30bdca6` on `main`. It is for a new agent (or fut
 - **Framework Laptop 13 Pro**, Intel Core Ultra X7 358H (Core Ultra Series 3), hostname `framework`.
 - NixOS **unstable** (26.11 pre-release); `system.stateVersion` and `home.stateVersion` are `26.05`. Do not bump them.
 - Disk: unencrypted btrfs (subvolumes `/`, `/home`, `/nix`), 1 GiB `/boot`, swap partition.
-- Desktop: **GNOME on GDM (Wayland)**.
+- Desktop: **GDM** with two sessions: **Hyprland (UWSM)** (new, see below) and **GNOME** (kept as the fallback). The plain "Hyprland" GDM entry skips UWSM; don't use it.
 - Shell: **zsh** (login shell). Editor: **Doom Emacs**, with `$EDITOR=emacsclient -t`.
+- Terminal: **Herdr desktop app** (packaged in `pkgs/herdr-app`), **Ghostty** as fallback, **herdr TUI**.
+- Keyboard: **keyd** makes Caps Lock Escape on tap, Control on hold (`modules/nixos/keyboard.nix`).
 - Auth: YubiKey (FIDO2 PIN + touch), then fingerprint, then password, for sudo, polkit and login.
 - Everything below was applied, tested after logout/login, and merged to `main`.
 
@@ -24,8 +26,12 @@ Written 2026-11-12, at commit `30bdca6` on `main`. It is for a new agent (or fut
 ```
 nixos/flake.nix              inputs + mkHost helper; `framework = mkHost "framework";`
 nixos/hosts/framework/       machine-specific: hardware, boot, NPU, fprintd, stateVersions
-nixos/modules/nixos/         base.nix, desktop.nix (GNOME), yubikey.nix, users/austin.nix
-nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix
+nixos/modules/nixos/         base.nix, desktop.nix (shared: GDM, sound, printing), gnome.nix, hyprland.nix,
+                             keyboard.nix (keyd), yubikey.nix, users/austin.nix
+nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix,
+                             terminal.nix, hyprland.nix + hypr/*.lua
+nixos/pkgs/                  packages this repo defines (herdr-app), added to pkgs via overlays.default
+.luarc.json (repo root)      points lua-language-server at Hyprland's stubs (~/.config/hypr/stubs)
 ```
 
 Flake inputs: nixpkgs (nixos-unstable), nixos-hardware, home-manager (master), nix-doom-emacs-unstraightened, zen-browser. Home Manager runs as a NixOS module (`useGlobalPkgs`, `useUserPackages`, `backupFileExtension = "backup"`). `inputs` is passed to modules through `specialArgs` / `extraSpecialArgs`.
@@ -108,32 +114,28 @@ Related setup ideas, once comfortable:
 - `services.emacs.client` gives the GUI client; a keyboard shortcut to `emacsclient -c` makes Emacs feel native.
 - Optional: Austin could replace VS Code (`modules/home/vscode.nix`) once Emacs feels comfortable. Don't remove it unprompted.
 
-## Next step 2: considering other window managers
+## Hyprland: how it is wired (read before touching it)
 
-**Background:** on Aurora, Austin used **niri** (scrollable-tiling Wayland compositor) with the **Noctalia** shell, **ghostty** as terminal (foot as fallback), and **fuzzel** as launcher. Those configs live in `aurora/dotfiles/.config/{niri,noctalia,ghostty,foot}`. They're a good reference for his keybindings and preferences, but on NixOS they should be **rewritten as Nix options**, not linked.
+- **Config is Lua.** Hyprland 0.55 introduced `hyprland.lua`, and 0.57 dropped `hyprland.conf` entirely. Like Doom's Elisp, it's kept as real files in `modules/home/hypr/` (`10-settings.lua`, `20-binds.lua`, `30-rules.lua`, loaded in name order through Home Manager's `extraLuaFiles`). Nix only wires them in.
+- **Checked at build time:** `modules/home/hyprland.nix` runs `Hyprland --verify-config` on those files in a derivation. A bad option, rule field or dispatcher argument fails `nixos-rebuild` with Hyprland's error message. The check does **not** validate `hl.dsp.layout("…")` message strings, so test new ones live.
+- **Authoritative API reference:** `<hyprland pkg>/share/hypr/hyprland.lua` (the example config) and `share/hypr/stubs/hl.meta.lua`. The wiki is often ahead of the packaged version.
+- **UWSM** (`programs.hyprland.withUWSM = true`) runs the session as systemd units and reaches `graphical-session.target`. It is also the package variant in the binary cache: with `withUWSM = false`, NixOS recompiles Hyprland locally. Home Manager's `wayland.windowManager.hyprland.systemd.enable` is therefore `false`, and `package`/`portalPackage` are `null` (the NixOS module installs them).
+- **Layout:** the built-in `scrolling` layout (niri-like). The binds are ported from `aurora/dotfiles/.config/niri`:
+  - `Super+Ctrl+H/L` swap whole columns (`swapcol`); `Ctrl+J/K` move a window within its column.
+  - A three-finger horizontal swipe is `scroll_move` (scrolls the tape); vertical is `workspace`.
+  - The column swap and the swipe pass the config check but were **not tested live**. Ask Austin whether they behave.
+- **Noctalia v5** is the whole shell: bar, launcher, notifications, lock screen (PAM service `login`), fingerprint via fprintd D-Bus, idle lock/screen-off, OSD, screenshots, wallpaper and polkit agent. It is configured in `programs.noctalia.settings` (TOML). Settings-window changes go to `~/.local/state/noctalia/settings.toml` and override Nix. Its systemd unit has an `ExecCondition` so it only starts when `XDG_CURRENT_DESKTOP` is Hyprland (GNOME also reaches `graphical-session.target`). `noctalia config export full` prints every option with its default.
+- **wlr-which-key** on `Super+Space` (menu defined in `hyprland.nix`). Each entry shows its direct bind. Key names are keysyms (`Tab`, not `tab`); a bad one makes it exit with a parse error.
+- **Editor support:** the repo-root `.luarc.json` points lua-language-server at `~/.config/hypr/stubs`, a Home Manager link to the package's stubs. It must sit at the repo root: Doom's `project-find-functions` puts projectile first, which gives eglot the git root. Verified headless: diagnostics, completion and hover (`K`) for `hl`.
+- **Testing in a nested Hyprland** (`Hyprland -c <test.lua>` inside a running session) works well, **but `hyprctl -i 0` targets the first instance, which may be Austin's real session.** On 2026-11-14, `hyprctl -i 0 dispatch 'hl.dsp.exit()'` ended his live session. Never run nested tests while he's logged into Hyprland without asking. Address a test instance only by its own signature (`hyprctl instances`, matching the PID you started), and prefer `Hyprland --verify-config` when it's enough.
+- **keyd** (`modules/nixos/keyboard.nix`) does Caps = Esc/Ctrl below every session, so there are no `kb_options`/`xkb.options` remaps. The YubiKey (`1050:0407`) is excluded. A libinput quirk keeps "disable touchpad while typing" working.
 
-Candidates (all three exist as NixOS options in the current nixpkgs):
-- `programs.niri.enable`: matches his Aurora workflow. For declarative config in Nix, the community **niri-flake** (sodiboo/niri-flake) provides Home Manager `programs.niri.settings`. Verify the current option names and input setup against its README before using it.
-- `programs.hyprland.enable`: dynamic tiling. Home Manager's `wayland.windowManager.hyprland.settings` is fully declarative.
-- `programs.sway.enable`: i3-style tiling, very stable. Home Manager has `wayland.windowManager.sway.config`.
+## Herdr desktop app
 
-Suggested approach:
-1. **Keep GNOME as a fallback.** Add the new compositor as an *extra session* (GDM lists all installed sessions), so a broken config never locks him out. NixOS generations also allow rolling back from the boot menu.
-2. **Restructure desktops:** split `modules/nixos/desktop.nix` into shared parts (sound, printing, fonts) plus `gnome.nix` and e.g. `niri.nix`, and import the ones each host wants. The per-user compositor config goes in `modules/home/` (e.g. `niri.nix`).
-3. **Pieces GNOME provides today that a bare compositor won't:**
-   - lock screen (swaylock or hyprlock, which needs `security.pam.services.<locker> = {}` so YubiKey and fingerprint work there too)
-   - polkit authentication agent
-   - notifications
-   - bar/shell (Noctalia, waybar, …)
-   - launcher (fuzzel)
-   - xdg-desktop-portal (screen sharing, file pickers)
-   - screenshots
-   - idle/suspend handling (swayidle/hypridle)
-   - network, Bluetooth and brightness controls
-4. Check that the Emacs service still starts. It is tied to `graphical-session.target`, which the compositor's systemd session must reach.
-5. Test by logging into the new session from GDM, and keep GNOME as the default until the new setup is complete.
-
-Ask Austin which compositor he wants before building one. niri is the natural default given his history.
+- `pkgs/herdr-app/package.nix`: upstream's prebuilt tarball, patched with `autoPatchelfHook`. `runtimeDependencies` cover the libraries it `dlopen`s (Vulkan, Wayland, EGL). The wrapper puts nixpkgs' `herdr-core` on `PATH` and sets `HERDR_TELEMETRY=0`.
+- **Update:** take the version and sha256 from `https://releases.herdr.dev/app/latest.json`. Ignore the app's own updater (it can't write to the store).
+- herdr-core runs as a `systemd-run` user unit (`hc-serve-*`). `users.users.austin.linger = true` keeps it, and the terminals in it, alive across logouts.
+- `~/.config/herdr-app/` is deliberately **not** managed by Nix: the app writes its own settings there.
 
 ## Other open items
 
@@ -143,3 +145,5 @@ Ask Austin which compositor he wants before building one. niri is the natural de
 - [ ] **Java in Doom:** skipped because opening `.java` hung Emacs (cause not investigated).
 - [ ] **Remote branches:** three unmerged branches (`codex/fix-setup-scripts-for-aurora-compatibility`, `feat/mise-workstation`, `init-flakes`) were left untouched. Don't delete them without asking.
 - [ ] `~/.config/Code/User/settings.json.backup` is the pre-Home-Manager VS Code settings file. Safe to delete once Austin confirms he doesn't need anything from it.
+- [ ] **Hyprland follow-ups:** confirm the live behaviour of the column swap and the swipe, and of the lock screen with YubiKey PIN, fingerprint and password. Not ported from niri yet: overview, `Mod+Home/End`, window-height binds.
+- [ ] **Branches:** `feat/terminals` and `feat/hyprland` were merged to `main` (2026-11-14); they can be deleted when Austin agrees.
