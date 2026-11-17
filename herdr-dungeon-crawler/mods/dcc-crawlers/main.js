@@ -1,12 +1,13 @@
 // Dungeon Crawler Carl layout: the left sidebar. Spaces are floors of the
-// dungeon; agents are the crawlers (and their status is their health).
+// dungeon; agents are the crawlers, and a Claude Code agent shows how many crawlers it has left.
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { spaces, agents, run, theme, setAgentOrder, openOverlay } from "herdr";
+import { spaces, agents, panes, run, theme, setAgentOrder, openOverlay } from "herdr";
 import { who } from "./cast.js";
 import { avatar } from "./avatar.js";
 import { floorOf } from "./floors.js";
+import { readContext, kilo, crawlerColor } from "./context.js";
 
 const floorNum = (id) => { const s = spaces().find((x) => x.id === id); return s ? floorOf(s).n : 0; };
 
@@ -16,8 +17,6 @@ const LABEL = {
   done: "ACHIEVEMENT UNLOCKED",
   idle: "RESTING IN SAFE ROOM",
 };
-// How full a crawler's "health bar" looks, by what it's up to.
-const BAR = { working: 0.62, blocked: 0.28, done: 1, idle: 0.85 };
 
 function header(t, icon, label, right) {
   return h_flex()
@@ -33,6 +32,23 @@ function header(t, icon, label, right) {
 }
 
 export default class DccCrawlers extends View {
+  init(_p, cx) {
+    this.ctxs = new Map(); // agent address -> context readout, for Claude Code agents
+    this.seen = new Map(); // agent address -> last status seen
+    cx.timer.every(20000, (cx) => agents().forEach((a) => this.refresh(a, cx)));
+  }
+
+  // Look at how full an agent's context is. Quietly nothing for other agents, remote machines or no transcript.
+  refresh(a, cx) {
+    const cwd = panes().find((p) => p.pane === a.pane)?.cwd;
+    const remote = spaces().find((s) => s.id === a.space)?.machine;
+    if (a.app !== "claude-code" || remote || !cwd) { this.ctxs.delete(a.address); return; }
+    cx.spawn(async (cx) => {
+      this.ctxs.set(a.address, await readContext(cwd));
+      cx.notify();
+    });
+  }
+
   floor(t, s) {
     const dot = s.status && s.status !== "idle" ? t[s.status] : null;
     return h_flex()
@@ -67,6 +83,7 @@ export default class DccCrawlers extends View {
     const color = a.status === "idle" ? t.idle : t[a.status] ?? t.idle;
     const g = a.program;
     const c = who(a.address);
+    const ctx = this.ctxs.get(a.address);
     return v_flex()
       .id(`dcc-c-${a.address}`)
       .mx(6)
@@ -103,21 +120,27 @@ export default class DccCrawlers extends View {
       )
       .child(div().text_size(11).text_color(c.color).child(`"${c.say[a.status] ?? ""}"`))
       .child(div().truncate().text_size(10).text_color(t.muted).child(a.title || a.space_name))
-      // The "health bar": it pulses while in combat, and drains to red when the crawler needs you.
-      .child(
-        div().h(4).rounded(2).bg(t.border).overflow_hidden().child(
-          div().h_full().w(`${Math.round(BAR[a.status] * 100)}%`).rounded(2).bg(color)
-            .when(a.status === "working" || a.status === "blocked", (el) => el.loop("opacity", { from: 0.5, to: 1, period: 1200 })),
-        ),
+      // Crawlers remaining: how much of the agent's context window is still free (Claude Code agents only).
+      .when(Boolean(ctx), (el) =>
+        el
+          .child(div().text_size(9).text_color(crawlerColor(ctx.frac, t)).child(`${kilo(ctx.left)} of ${kilo(ctx.total)} crawlers remaining`))
+          .child(
+            div().h(4).rounded(2).bg(t.border).overflow_hidden().child(
+              div().h_full().w(`${Math.max(1, Math.round(ctx.frac * 100))}%`).rounded(2).bg(crawlerColor(ctx.frac, t)).transition("width", 500)
+                .when(ctx.frac <= 0.15, (d) => d.loop("opacity", { from: 0.45, to: 1, period: 900 })),
+            ),
+          ),
       )
       .child(div().text_size(9).font_semibold().text_color(color).child(LABEL[a.status] ?? ""));
   }
 
-  render() {
+  render(cx) {
     const t = theme();
     const all = spaces();
     const list = agents();
     setAgentOrder(list.map((a) => a.address));
+    // A finished turn changes the numbers: look again whenever an agent's status changes.
+    for (const a of list) if (this.seen.get(a.address) !== a.status) { this.seen.set(a.address, a.status); this.refresh(a, cx); }
     return v_flex()
       .id("dcc-side")
       .size_full()

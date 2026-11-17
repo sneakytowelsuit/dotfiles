@@ -28,7 +28,7 @@ nixos/flake.nix              inputs + mkHost helper; `framework = mkHost "framew
 nixos/hosts/framework/       machine-specific: hardware, boot, NPU, fprintd, stateVersions
 nixos/modules/nixos/         base.nix, desktop.nix (shared: GDM, sound, printing), gnome.nix, hyprland.nix,
                              keyboard.nix (keyd), yubikey.nix, kdeconnect.nix, users/austin.nix
-nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, herdr-layout.nix, kdeconnect.nix,
+nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, herdr-layout.nix, kdeconnect.nix, tools.nix,
                              terminal.nix, hyprland.nix + hypr/*.lua
 nixos/pkgs/                  packages this repo defines (herdr-app), added to pkgs via overlays.default
 herdr-dungeon-crawler/       the Dungeon Crawler Carl Herdr layout (also a Herdr gallery layout); linked by herdr-layout.nix
@@ -144,6 +144,7 @@ Related setup ideas, once comfortable:
 - `modules/home/herdr-layout.nix` (imported from `terminal.nix`) links each file of `layouts/`, `themes/` and `mods/` into `~/.config/herdr-app` with `xdg.configFile`, `force = true` (the files were first made by hand there). It skips the recipe, preview, `sprites/src/` and scripts. Edit in the repo, `git add` new files, rebuild; Herdr hot-reloads the links.
 - The files are read-only store links, so `layout.set` and other tree edits to `dungeon.json` fail by design; edit the repo copy. To try a change before rebuilding, edit a copy and delete the link.
 - Mods share four modules by copy (`floors.js`, `scene.js`, `cast.js`, `avatar.js`): edit `mods/dcc-crawlers/` and run `herdr-dungeon-crawler/sync-shared.sh`. Sprites are text in `mods/dcc-crawlers/sprites/src/`, built by `sprites/build.sh`.
+- The pane headers and sidebar cards show `N of M crawlers remaining` for Claude Code agents: the model's context window minus the tokens in the latest `usage` block of the session transcript (`~/.claude/projects/<folder>/*.jsonl`). It is read by `mods/dcc-crawlers/context.js` (copied into `dcc-pane` by `sync-shared.sh`) with `sh`, `ls`, `tail` and `grep`, every 20 s and on status changes.
 - Floor and character choices live in Herdr's shared state (`dcc.floors` and `dcc.cast` in `~/.config/herdr-app/shared.json`), not in Nix.
 
 ## KDE Connect
@@ -152,6 +153,10 @@ Related setup ideas, once comfortable:
 - **Works under GNOME and Hyprland.** Both services hang off `graphical-session.target`, so a phone paired once works in either. The indicator needs a tray: Noctalia's default bar has one (`tray` in `bar.end`), and `tray.target` comes from Home Manager. GNOME has no tray without an extension; use `kdeconnect-app` there.
 - **Pairing is manual and not tested:** install KDE Connect on the phone, same Wi-Fi, then accept the request from the tray icon or `kdeconnect-app`. `kdeconnect-cli --list-devices` shows paired devices. The config builds clean (no warnings) but was never switched in or paired.
 - **Security trade-off.** The ports are open on **every** interface, including public Wi-Fi. Pairing needs approval on both sides and traffic is encrypted, but the ports are reachable. To avoid that, set `programs.kdeconnect.enable = false` on untrusted networks or restrict the ports to one interface with `networking.firewall.interfaces."<name>"`.
+
+## Everyday tools
+
+`modules/home/tools.nix` puts the CLI tools scripts and agents reach for on PATH (jq, yq, python3, sqlite3, shellcheck/shfmt, file, tree, fd, zip/unzip, wget, imagemagick, rsvg-convert, htop, lsof, killall, dig). It was added after an agent session found them missing. **python3 matters beyond convenience:** Herdr's Claude Code hook (`~/.claude/hooks/herdr-agent-state.sh`) is a python3 script that silently does nothing without it. Language toolchains (node, gcc, make) are deliberately left to per-project devShells.
 
 ## Other open items
 

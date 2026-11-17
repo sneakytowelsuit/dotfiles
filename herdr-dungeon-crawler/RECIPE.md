@@ -11,9 +11,9 @@ Top to bottom, a `column` on a near-black canvas, with the system title bar hidd
 - **Top bar, 40px** (drag to move the window). Left to right: a red skull and "DUNGEON CRAWL" in the accent color (12px, semibold); a bordered chip `FLOOR 04  Iron Tangle | <space name>`; the shown space's tabs as "rooms" (`R1 1`, `R2 2`, ..., the active one has a 2px accent underline and a surface-colored background, others are muted); then a `+` (new tab) and a command-palette button on the right, and window buttons where the system draws none (Linux, Windows).
 - **Sidebar, 280px wide** (resizable 190 to 440; a 1px border divides it from the work area). Three stacked blocks:
   1. **Scene banner, 140px.** An 80px animated scene for the shown space's floor, and under it, on the chrome background, `FLOOR 04 · IRON TANGLE` (11px, accent) over the floor's full description (9px, muted, wrapping to as many lines as it needs, never truncated).
-  2. **Floors and crawlers** (fills the middle). `FLOORS` header with a `+` (new space), then one row per space: floor number (`01`) in accent when active, space name, git branch, a pulsing status dot. Below, `CRAWLERS (n)` and one card per agent: a framed pixel portrait, the character's name, `<program> · <role>`, a quoted catchphrase in the character's color, the agent's terminal title, a 4px "health bar", and a status label.
+  2. **Floors and crawlers** (fills the middle). `FLOORS` header with a `+` (new space), then one row per space: floor number (`01`) in accent when active, space name, git branch, a pulsing status dot. Below, `CRAWLERS (n)` and one card per agent: a framed pixel portrait, the character's name, `<program> · <role>`, a quoted catchphrase in the character's color, the agent's terminal title, a status label, and (for Claude Code agents) a "crawlers remaining" readout with a 4px bar: `419k of 1.0M crawlers remaining`.
   3. **The System, 230px.** An eye icon and `THE SYSTEM` with `AI · ALWAYS WATCHING`, then a scrolling log of timestamped messages, newest first and highlighted, each with the character's portrait (or the eye) and a colored left border.
-- **Work area.** The shown tab's panes as cards (1px border, 3px radius, 6px gap, accent border on the focused pane). Each pane has a 38px header: a 3px status bar, the character portrait (agent panes) or the program icon, the name, `<program> · <folder> ⎇ <branch>`, and a status tag; hover shows split right, split down, zoom and close.
+- **Work area.** The shown tab's panes as cards (1px border, 3px radius, 6px gap, accent border on the focused pane). Each pane has a 38px header: a 3px status bar, the character portrait (agent panes) or the program icon, the name, `<program> · <folder> ⎇ <branch>`, and a status tag, and for Claude Code agents a 3px bar along the pane's top edge with `419k of 1.0M crawlers remaining` on the right; hover shows split right, split down, zoom and close.
 - **Status bar, 26px.** `FLOOR n`, `FLOORS n`, `CRAWLERS n`, `IN COMBAT n`, `AWAITING YOU n`, a rotating System quip every 15 seconds, and `TIME IN DUNGEON`.
 - **Type:** JetBrains Mono everywhere, 14px terminals, 11 to 13px UI.
 
@@ -50,7 +50,9 @@ Eight-bit style, 24×24, drawn from the DCC wikis where they describe a look (co
 | `done` | `ACHIEVEMENT UNLOCKED` | hops (650 ms), four gold and white sparkles twinkle | done pink |
 | `idle` | `RESTING IN SAFE ROOM` | breathes slowly (2.6 s), `z`, `z z`, `z z Z` cycles above it | idle grey |
 
-The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and pulses while working or blocked. Pane headers show the same portrait at 30px (24px sprite, 1×); cards show it at 56px (48px sprite, 2×). Sprites always draw at whole multiples so pixels stay crisp.
+Pane headers show the same portrait at 30px (24px sprite, 1×); cards show it at 56px (48px sprite, 2×). Sprites always draw at whole multiples so pixels stay crisp.
+
+**Crawlers remaining.** For a Claude Code agent, the sidebar card and the pane header both show how much of the model's context window is still free: every token is a crawler, so `419k of 1.0M crawlers remaining`. The bar is green above half, gold below half, red below a fifth, and pulses under 15%. The window is 1M for current models (Sonnet, Opus, Fable and Haiku 5.x; Opus and Sonnet 4.6+) and 200K for Haiku 4.5 and older. The numbers are the last `usage` block in the agent's Claude Code session transcript (input, cache-creation, cache-read and output tokens), read every 20 seconds and whenever the agent's status changes. Other agents (Codex, shells, remote machines) get no bar: Herdr exposes no token data for them.
 
 **Floors.** Clicking the floor chip, the number on a sidebar row, or the scene banner opens the floor picker (a 4-column dialog of the 11 floors, each with a live mini scene, the book, and a one-line description). Picking one stores it for that space and the window takes that floor's theme. "Back to default" appears once a floor has been picked. A space with no pick is on floor `min(its position, 11)`. The choice persists in shared state under the key `dcc.floors` (`{ "<space id>": <floor number> }`).
 
@@ -58,7 +60,7 @@ The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and puls
 
 **The whole window follows the floor.** The top bar watches the shown space's floor and, when it changes, runs `app.theme` with `dungeon-f<n>`. Switching spaces switches the look.
 
-**The System.** It logs, in its own voice, when an agent arrives, starts working, becomes blocked, finishes, or leaves, and when the shown space's floor changes. Log keeps 40 messages.
+**The System.** It logs, in its own voice, when an agent arrives, starts working, becomes blocked, finishes, or leaves, and when a character or a floor is switched (character swaps and floor moves each get their own pool of snark, such as "Crawler swap detected: Carl out, Princess Donut in. Princess Donut approves of anything that is about Princess Donut"), and when the shown space's floor changes. Log keeps 40 messages.
 
 **Clicks.** Tab click selects it; right-click opens the shipped `menu` popup. Space row click selects the space; right-click opens its menu. Agent card click focuses its pane. Floor chip's space-name segment opens the shipped `picker` for quick space switching. Pane header click focuses the pane.
 
@@ -82,11 +84,11 @@ The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and puls
 | `dcc-floors` | the floor picker dialog, props `{ space, overlay }` |
 | `dcc-cast` | the character picker dialog, props `{ address, overlay }` |
 
-**Shared modules.** Mods can't import across folders, so these live in `dcc-crawlers/` and are copied: `floors.js` (floor data and `floorOf`, `setFloor`) into `dcc-bar`, `dcc-scene`, `dcc-floors`, `dcc-status`, `dcc-system`; `scene.js` into `dcc-scene`, `dcc-floors`; `cast.js` (cast, `who`, `setCast`, `sprite`) into `dcc-system`, `dcc-pane`, `dcc-cast`; `avatar.js` into `dcc-pane`, `dcc-cast`. `sync-shared.sh` redoes the copies. Edit the originals in `dcc-crawlers/`.
+**Shared modules.** Mods can't import across folders, so these live in `dcc-crawlers/` and are copied: `floors.js` (floor data and `floorOf`, `setFloor`) into `dcc-bar`, `dcc-scene`, `dcc-floors`, `dcc-status`, `dcc-system`; `scene.js` into `dcc-scene`, `dcc-floors`; `cast.js` (cast, `who`, `setCast`, `sprite`) into `dcc-system`, `dcc-pane`, `dcc-cast`; `avatar.js` into `dcc-pane`, `dcc-cast`; `context.js` (the crawlers-remaining reader) into `dcc-pane`. `sync-shared.sh` redoes the copies. Edit the originals in `dcc-crawlers/`.
 
 **Sprites.** `mods/dcc-crawlers/sprites/src/<name>.txt` is one palette (`=X #hex`) plus 24 rows of pixels; `=mirror` makes rows the left 12 columns; a leading `|` is a full un-mirrored row. `sprites/build.sh` turns them into the SVGs.
 
-**`herdr` API used:** `spaces`, `agents`, `panes`, `theme`, `window`, `run`, `openOverlay`, `closeOverlay`, `props`, `shared`, `setShared`, `setAgentOrder`. **Commands:** `app.theme`, `app.palette`, `space.select`, `space.new`, `tab.select`, `tab.new`, `pane.focus`, `pane.split`, `pane.zoom`, `pane.close`, `window.minimize`, `window.maximize`, `window.close`. **Shipped mods used:** `menu`, `picker`. Motion is all native (`.loop`, `.frames`, `.spin`); there are no timers except the status bar's two (15 s quip, 60 s clock). No network, no programs run, no files read outside the mods' own folders.
+**`herdr` API used:** `spaces`, `agents`, `panes`, `theme`, `window`, `run`, `openOverlay`, `closeOverlay`, `props`, `shared`, `setShared`, `setAgentOrder`. **Commands:** `app.theme`, `app.palette`, `space.select`, `space.new`, `tab.select`, `tab.new`, `pane.focus`, `pane.split`, `pane.zoom`, `pane.close`, `window.minimize`, `window.maximize`, `window.close`. **Shipped mods used:** `menu`, `picker`. Motion is all native (`.loop`, `.frames`, `.spin`); there are no timers except the status bar's two (15 s quip, 60 s clock). No network. **It does run programs and read files outside its own folders:** `dcc-crawlers` and `dcc-pane` run `sh -c` with `ls`, `tail` and `grep` to read token counts from `~/.claude/projects/<folder>/*.jsonl` (Claude Code's session transcripts). Only the `usage` and `model` fields are matched; no conversation text is read or kept, and nothing leaves the machine.
 
 ## Watch out
 
@@ -96,6 +98,7 @@ The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and puls
 - **Look sources.** Floor settings and character looks come from the public DCC wiki (dungeoncrawlercarlwiki.com). The wiki gives almost no colors, so palettes are interpretation. Floors above 11 are not in the picker.
 - **Pixel rows must be exact.** A sprite file with the wrong row length or count draws wrong; `build.sh` prints which row.
 - **Limits.** 11 floors, 10 characters. A character comes from a hash of the agent address, so two agents can end up with the same one. The scene banner measures its own width; below about 190px the sidebar is cramped.
+- **Crawlers remaining needs Claude Code, a local folder and a transcript.** It finds the transcript by the pane's folder (the newest session in `~/.claude/projects/<that folder>`), so two Claude sessions in one folder share it, and a session that has changed folder since it started may show nothing. It measures against the model's real window; Claude Code may compact the conversation before that is full.
 - **Character picks are keyed by agent address.** If an address is later reused by a different agent, the pick sticks to it; "Back to automatic" in the picker clears it.
 - **Mod copies.** Editing `floors.js`, `scene.js`, `cast.js` or `avatar.js` anywhere but `dcc-crawlers/` is undone by `sync-shared.sh`.
 - **Needs** the shipped `menu` and `picker` mods and `herdr-app` with `app.theme`, `openOverlay` and `shared` (the current release).
@@ -108,5 +111,6 @@ The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and puls
 3. With one space, the chip reads `FLOOR 01 First Floor`; creating three more spaces makes the fourth read `FLOOR 04 Iron Tangle`, the window turns steel-blue with a red accent, trains move in the banner, and the System logs `Floor 4: the Iron Tangle. ...`.
 4. Clicking the chip opens a picker of 11 floors; choosing floor 7 for the shown space changes the window to glass cyan, the banner to tubes and racers, and the chip to `FLOOR 07 The Great Race`.
 5. Clicking an agent's portrait opens the character picker; choosing Carl turns that agent into Carl in its sidebar card, its pane header and the System log, and "Back to automatic" restores it.
-6. A working agent shows a bobbing portrait and `IN COMBAT`; a blocked one jitters with a blinking red `!` and `AWAITS YOUR INPUT`.
-7. Quitting and reopening keeps each space's floor and each agent's character.
+6. A Claude Code agent's pane header shows a bar and `N of M crawlers remaining`, and its sidebar card shows the same numbers; changing a character or moving a space to another floor adds a snarky System message.
+7. A working agent shows a bobbing portrait and `IN COMBAT`; a blocked one jitters with a blinking red `!` and `AWAITS YOUR INPUT`.
+8. Quitting and reopening keeps each space's floor and each agent's character.

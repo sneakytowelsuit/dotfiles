@@ -26,6 +26,10 @@ Don't overwrite files you already have: if `dungeon`, a `dungeon*` theme or a `d
 
 This repo's NixOS config manages it declaratively: `nixos/modules/home/herdr-layout.nix` links every file in this folder into `~/.config/herdr-app` (the layout, the themes and the mods), one file at a time, so Herdr can still write its own files beside them. Edit here, then `sudo nixos-rebuild switch`.
 
+## Privacy
+
+The "crawlers remaining" bars run `sh`, `ls`, `tail` and `grep` to read token counts from Claude Code's session transcripts under `~/.claude/projects/`. Only the `usage` and `model` fields are matched, no conversation text is read or kept, and nothing is sent anywhere. Agents other than Claude Code get no bar.
+
 ## Editing
 
 The mods share four modules that must be copied between mod folders (mods can't import across folders). After editing `floors.js`, `scene.js`, `cast.js` or `avatar.js` in `mods/dcc-crawlers/`, run `./sync-shared.sh`. Sprites are text in `mods/dcc-crawlers/sprites/src/`; `mods/dcc-crawlers/sprites/build.sh` rebuilds the SVGs.
