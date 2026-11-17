@@ -1,5 +1,7 @@
 // The cast. An agent is assigned a character from its address, so it keeps the same one.
 // Looks come from the DCC wikis (dungeoncrawlercarlwiki.com); colors the wiki doesn't give are my own choices.
+import { shared, setShared } from "herdr";
+
 export const CAST = [
   { name: "Carl", color: "#e07a3c", role: "Reluctant crawler",
     say: { working: "Okay. Okay. Moving.", blocked: "I need an answer. Now.", done: "Done. Don't make it weird.", idle: "Sleeping. Leave me alone." } },
@@ -23,11 +25,31 @@ export const CAST = [
     say: { working: "Cici! Gustavo! Attack!", blocked: "Don't make me ask twice.", done: "Good dogs.", idle: "Resting. The dogs are watching." } },
 ];
 
+
+// Pixel-art portrait (24x24 SVG, built by sprites/build.sh from sprites/src/*.txt).
+export const sprite = (c) => `mods/dcc-crawlers/sprites/${c.name.replace("Princess ", "").toLowerCase().replace(/ /g, "-")}.svg`;
+
+// Characters picked by hand, kept in shared state under "dcc.cast": { "<agent address>": "<character name>" }.
+const picks = () => {
+  const m = shared("dcc.cast");
+  return m && typeof m === "object" ? m : {};
+};
+
+// An agent's character: the one picked for it, else one chosen from a hash of its address.
 export function who(key) {
+  const picked = CAST.find((c) => c.name === picks()[key]);
+  if (picked) return picked;
   let h = 0;
   for (const c of String(key)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return CAST[h % CAST.length];
 }
 
-// Pixel-art portrait (24x24 SVG, built by sprites/build.sh from sprites/src/*.txt).
-export const sprite = (c) => `mods/dcc-crawlers/sprites/${c.name.replace("Princess ", "").toLowerCase().replace(/ /g, "-")}.svg`;
+export const isCastPicked = (key) => picks()[key] != null;
+
+// Pick a character for an agent (name), or null to go back to the automatic one.
+export function setCast(key, name) {
+  const m = { ...picks() };
+  if (name == null) delete m[key];
+  else m[key] = name;
+  setShared("dcc.cast", m);
+}

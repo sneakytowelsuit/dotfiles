@@ -9,6 +9,7 @@ import { scene } from "./scene.js";
 
 const CARD_W = 232;
 const SCENE_H = 76;
+const PER_ROW = 4;
 
 export default class DccFloors extends View {
   card(t, fl, current, spaceId, overlay) {
@@ -26,14 +27,15 @@ export default class DccFloors extends View {
       .hover((s) => s.border_color(t.accent))
       .on_click(() => { setFloor(spaceId, fl.n); closeOverlay(overlay); })
       .child(scene(fl.n, CARD_W - 2, SCENE_H))
+      // No fixed height and nothing clipped: the description may take as many lines as it needs.
       .child(
-        v_flex().px(10).py(7).gap(2).h(92)
-          .child(h_flex().gap(8).items_center()
-            .child(div().flex_none().text_size(11).font_semibold().text_color(t.accent).child(`FLOOR ${String(fl.n).padStart(2, "0")}`))
-            .child(div().flex_1().truncate().text_size(12).font_semibold().text_color(t.foreground).child(fl.name))
+        v_flex().px(10).py(8).gap(3).min_h(124)
+          .child(h_flex().items_center().gap(8)
+            .child(div().flex_1().text_size(10).font_semibold().text_color(t.accent).child(`FLOOR ${String(fl.n).padStart(2, "0")}`))
             .when(on, (el) => el.child(div().flex_none().text_size(9).font_semibold().text_color(t.accent_foreground).px(5).rounded(2).bg(t.accent).child("HERE"))))
+          .child(div().text_size(13).font_semibold().text_color(t.foreground).child(fl.name))
           .child(div().truncate().text_size(9).text_color(t.dim).child(fl.book))
-          .child(div().text_size(10).text_color(t.muted).max_h(38).overflow_hidden().child(fl.tag)),
+          .child(div().text_size(10).text_color(t.muted).child(fl.tag)),
       );
   }
 
@@ -44,7 +46,7 @@ export default class DccFloors extends View {
     if (!space) return div();
     const current = floorOf(space);
     const rows = [];
-    for (let i = 0; i < MAX; i += 4) rows.push(FLOORS.slice(i, i + 4));
+    for (let i = 0; i < MAX; i += PER_ROW) rows.push(FLOORS.slice(i, i + PER_ROW));
     return v_flex()
       .id("dcc-floors")
       .size_full()

@@ -144,7 +144,7 @@ Related setup ideas, once comfortable:
 - `modules/home/herdr-layout.nix` (imported from `terminal.nix`) links each file of `layouts/`, `themes/` and `mods/` into `~/.config/herdr-app` with `xdg.configFile`, `force = true` (the files were first made by hand there). It skips the recipe, preview, `sprites/src/` and scripts. Edit in the repo, `git add` new files, rebuild; Herdr hot-reloads the links.
 - The files are read-only store links, so `layout.set` and other tree edits to `dungeon.json` fail by design; edit the repo copy. To try a change before rebuilding, edit a copy and delete the link.
 - Mods share four modules by copy (`floors.js`, `scene.js`, `cast.js`, `avatar.js`): edit `mods/dcc-crawlers/` and run `herdr-dungeon-crawler/sync-shared.sh`. Sprites are text in `mods/dcc-crawlers/sprites/src/`, built by `sprites/build.sh`.
-- Floor choices live in Herdr's shared state (`dcc.floors` in `~/.config/herdr-app/shared.json`), not in Nix.
+- Floor and character choices live in Herdr's shared state (`dcc.floors` and `dcc.cast` in `~/.config/herdr-app/shared.json`), not in Nix.
 
 ## KDE Connect
 

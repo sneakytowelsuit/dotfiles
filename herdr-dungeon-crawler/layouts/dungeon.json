@@ -20,7 +20,7 @@
           "id": "sidebar", "type": "column", "size": { "px": 280 }, "min": 190, "max": 440,
           "divider": { "width": 1, "color": "border" },
           "children": [
-            { "id": "scene", "type": "block", "size": { "px": 92 }, "content": { "mod": "dcc-scene" } },
+            { "id": "scene", "type": "block", "size": { "px": 140 }, "content": { "mod": "dcc-scene" } },
             { "id": "crawlers", "type": "block", "content": { "mod": "dcc-crawlers" } },
             { "id": "system", "type": "block", "size": { "px": 230 }, "min": 100, "content": { "mod": "dcc-system" } }
           ]

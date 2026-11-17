@@ -52,7 +52,7 @@ export default class DccCrawlers extends View {
       .on_mouse_down("right", () =>
         openOverlay({ mod: "menu", kind: "popup", width: 200, height: 260, props: { tab: "space", target: { id: s.id } } }),
       )
-      .child(div().id(`dcc-fb-${s.id}`).flex_none().w(26).text_size(12).font_semibold().text_color(s.active ? t.accent : t.dim).cursor_pointer().tooltip("Choose floor").hover((x) => x.text_color(t.accent)).on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "dcc-floors", kind: "dialog", width: 1000, height: 650, props: { space: s.id } }); }).child(String(floorOf(s).n).padStart(2, "0")))
+      .child(div().id(`dcc-fb-${s.id}`).flex_none().w(26).text_size(12).font_semibold().text_color(s.active ? t.accent : t.dim).cursor_pointer().tooltip("Choose floor").hover((x) => x.text_color(t.accent)).on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "dcc-floors", kind: "dialog", width: 1000, height: 760, props: { space: s.id } }); }).child(String(floorOf(s).n).padStart(2, "0")))
       .child(
         v_flex()
           .flex_1()
@@ -85,7 +85,9 @@ export default class DccCrawlers extends View {
           .gap(9)
           .items_center()
           .child(
-            avatar(t, a.status, c),
+            div().id(`dcc-av-${a.address}`).flex_none().cursor_pointer().tooltip("Choose character")
+              .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "dcc-cast", kind: "dialog", width: 1000, height: 520, props: { address: a.address } }); })
+              .child(avatar(t, a.status, c)),
           )
           .child(
             v_flex().flex_1().min_w(0)
@@ -131,7 +133,7 @@ export default class DccCrawlers extends View {
             .child("+"),
         ),
       )
-      .child(v_flex().flex_none().max_h(260).overflow_y_scrollbar().gap(1).children(all.map((s) => this.floor(t, s))))
+      .child(v_flex().flex_none().h(Math.min(260, all.length * 52)).overflow_y_scrollbar().gap(1).children(all.map((s) => this.floor(t, s))))
       .child(header(t, "skull", `CRAWLERS (${list.length})`))
       .child(
         v_flex().flex_1().min_h(0).overflow_y_scrollbar().gap(6).pb(8).children(

@@ -10,7 +10,7 @@ Top to bottom, a `column` on a near-black canvas, with the system title bar hidd
 
 - **Top bar, 40px** (drag to move the window). Left to right: a red skull and "DUNGEON CRAWL" in the accent color (12px, semibold); a bordered chip `FLOOR 04  Iron Tangle | <space name>`; the shown space's tabs as "rooms" (`R1 1`, `R2 2`, ..., the active one has a 2px accent underline and a surface-colored background, others are muted); then a `+` (new tab) and a command-palette button on the right, and window buttons where the system draws none (Linux, Windows).
 - **Sidebar, 280px wide** (resizable 190 to 440; a 1px border divides it from the work area). Three stacked blocks:
-  1. **Scene banner, 92px.** An animated scene for the shown space's floor with a translucent black strip over its bottom 34px: `FLOOR 04 · IRON TANGLE` (11px, accent) over the floor's one-line description (9px, muted).
+  1. **Scene banner, 140px.** An 80px animated scene for the shown space's floor, and under it, on the chrome background, `FLOOR 04 · IRON TANGLE` (11px, accent) over the floor's full description (9px, muted, wrapping to as many lines as it needs, never truncated).
   2. **Floors and crawlers** (fills the middle). `FLOORS` header with a `+` (new space), then one row per space: floor number (`01`) in accent when active, space name, git branch, a pulsing status dot. Below, `CRAWLERS (n)` and one card per agent: a framed pixel portrait, the character's name, `<program> · <role>`, a quoted catchphrase in the character's color, the agent's terminal title, a 4px "health bar", and a status label.
   3. **The System, 230px.** An eye icon and `THE SYSTEM` with `AI · ALWAYS WATCHING`, then a scrolling log of timestamped messages, newest first and highlighted, each with the character's portrait (or the eye) and a colored left border.
 - **Work area.** The shown tab's panes as cards (1px border, 3px radius, 6px gap, accent border on the focused pane). Each pane has a 38px header: a 3px status bar, the character portrait (agent panes) or the program icon, the name, `<program> · <folder> ⎇ <branch>`, and a status tag; hover shows split right, split down, zoom and close.
@@ -54,6 +54,8 @@ The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and puls
 
 **Floors.** Clicking the floor chip, the number on a sidebar row, or the scene banner opens the floor picker (a 4-column dialog of the 11 floors, each with a live mini scene, the book, and a one-line description). Picking one stores it for that space and the window takes that floor's theme. "Back to default" appears once a floor has been picked. A space with no pick is on floor `min(its position, 11)`. The choice persists in shared state under the key `dcc.floors` (`{ "<space id>": <floor number> }`).
 
+**Characters.** Clicking a portrait (the sidebar card or the pane header) opens the character picker: a 5-column dialog of all ten characters, each portrait playing the animation for the agent's status right now, with the current one marked `CURRENT`. Picking one stores it for that agent in shared state under `dcc.cast` (`{ "<agent address>": "<character name>" }`) and every mod redraws with it; "Back to automatic" returns to the hash-chosen character.
+
 **The whole window follows the floor.** The top bar watches the shown space's floor and, when it changes, runs `app.theme` with `dungeon-f<n>`. Switching spaces switches the look.
 
 **The System.** It logs, in its own voice, when an agent arrives, starts working, becomes blocked, finishes, or leaves, and when the shown space's floor changes. Log keeps 40 messages.
@@ -62,7 +64,7 @@ The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and puls
 
 ## Built from
 
-`layouts/dungeon.json`, a `column`: `bar` (40px, `window_drag`) → `body` row (`sidebar` column with `scene` 92px, `crawlers`, `system` 230px; then `main` tab block with pane frames and the `dcc-pane` header, 38px) → `status` (26px). Root: `"theme": "dungeon"`, `"titlebar": "none"`, `"toast": "dcc-toast"`, `"ui_font": "JetBrains Mono"`, preview `layouts/dungeon.svg`.
+`layouts/dungeon.json`, a `column`: `bar` (40px, `window_drag`) → `body` row (`sidebar` column with `scene` 140px, `crawlers`, `system` 230px; then `main` tab block with pane frames and the `dcc-pane` header, 38px) → `status` (26px). Root: `"theme": "dungeon"`, `"titlebar": "none"`, `"toast": "dcc-toast"`, `"ui_font": "JetBrains Mono"`, preview `layouts/dungeon.svg`.
 
 **Themes** (`themes/`): `dungeon.json` (the layout's own, since it is named like the layout) and `dungeon-f1.json` to `dungeon-f11.json`, one per floor. They are full theme files (background, foreground, selection, cursor, 16 ANSI colors, panel `colors`). **Copy them to the home's `themes/`**; without them the floors do not change the look.
 
@@ -78,8 +80,9 @@ The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and puls
 | `dcc-toast` | notifications as System announcements (`"toast"` in the layout) |
 | `dcc-status` | bottom bar |
 | `dcc-floors` | the floor picker dialog, props `{ space, overlay }` |
+| `dcc-cast` | the character picker dialog, props `{ address, overlay }` |
 
-**Shared modules.** Mods can't import across folders, so these live in `dcc-crawlers/` and are copied: `floors.js` (floor data and `floorOf`, `setFloor`) into `dcc-bar`, `dcc-scene`, `dcc-floors`, `dcc-status`, `dcc-system`; `scene.js` into `dcc-scene`, `dcc-floors`; `cast.js` (cast, `who`, `sprite`) into `dcc-system`, `dcc-pane`; `avatar.js` into `dcc-pane`. `sync-shared.sh` redoes the copies. Edit the originals in `dcc-crawlers/`.
+**Shared modules.** Mods can't import across folders, so these live in `dcc-crawlers/` and are copied: `floors.js` (floor data and `floorOf`, `setFloor`) into `dcc-bar`, `dcc-scene`, `dcc-floors`, `dcc-status`, `dcc-system`; `scene.js` into `dcc-scene`, `dcc-floors`; `cast.js` (cast, `who`, `setCast`, `sprite`) into `dcc-system`, `dcc-pane`, `dcc-cast`; `avatar.js` into `dcc-pane`, `dcc-cast`. `sync-shared.sh` redoes the copies. Edit the originals in `dcc-crawlers/`.
 
 **Sprites.** `mods/dcc-crawlers/sprites/src/<name>.txt` is one palette (`=X #hex`) plus 24 rows of pixels; `=mirror` makes rows the left 12 columns; a leading `|` is a full un-mirrored row. `sprites/build.sh` turns them into the SVGs.
 
@@ -93,15 +96,17 @@ The health bar is 62% (working), 28% (blocked), 100% (done), 85% (idle) and puls
 - **Look sources.** Floor settings and character looks come from the public DCC wiki (dungeoncrawlercarlwiki.com). The wiki gives almost no colors, so palettes are interpretation. Floors above 11 are not in the picker.
 - **Pixel rows must be exact.** A sprite file with the wrong row length or count draws wrong; `build.sh` prints which row.
 - **Limits.** 11 floors, 10 characters. A character comes from a hash of the agent address, so two agents can end up with the same one. The scene banner measures its own width; below about 190px the sidebar is cramped.
+- **Character picks are keyed by agent address.** If an address is later reused by a different agent, the pick sticks to it; "Back to automatic" in the picker clears it.
 - **Mod copies.** Editing `floors.js`, `scene.js`, `cast.js` or `avatar.js` anywhere but `dcc-crawlers/` is undone by `sync-shared.sh`.
 - **Needs** the shipped `menu` and `picker` mods and `herdr-app` with `app.theme`, `openOverlay` and `shared` (the current release).
 - **The layout file is read from the home.** `layout.set` and similar tree edits write it; if your setup makes it read-only (Nix, for example), those edits fail. Copy the layout and edit the copy.
 
 ## Done when
 
-1. `herdr-app check mods/<name>` passes for all eight mods.
+1. `herdr-app check mods/<name>` passes for all nine mods.
 2. `layout.switch {name: "dungeon"}` shows a top bar, a three-part sidebar and a status bar; `herdr-app status` has no errors.
 3. With one space, the chip reads `FLOOR 01 First Floor`; creating three more spaces makes the fourth read `FLOOR 04 Iron Tangle`, the window turns steel-blue with a red accent, trains move in the banner, and the System logs `Floor 4: the Iron Tangle. ...`.
 4. Clicking the chip opens a picker of 11 floors; choosing floor 7 for the shown space changes the window to glass cyan, the banner to tubes and racers, and the chip to `FLOOR 07 The Great Race`.
-5. A working agent shows a bobbing portrait and `IN COMBAT`; a blocked one jitters with a blinking red `!` and `AWAITS YOUR INPUT`.
-6. Quitting and reopening keeps each space's floor.
+5. Clicking an agent's portrait opens the character picker; choosing Carl turns that agent into Carl in its sidebar card, its pane header and the System log, and "Back to automatic" restores it.
+6. A working agent shows a bobbing portrait and `IN COMBAT`; a blocked one jitters with a blinking red `!` and `AWAITS YOUR INPUT`.
+7. Quitting and reopening keeps each space's floor and each agent's character.

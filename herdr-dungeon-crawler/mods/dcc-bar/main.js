@@ -93,7 +93,7 @@ export default class DccBar extends View {
           .text_size(12)
           .hover((s) => s.border_color(t.accent))
           .tooltip("Choose this space's floor")
-          .on_click(() => openOverlay({ mod: "dcc-floors", kind: "dialog", width: 1000, height: 650, props: { space: space.id } }))
+          .on_click(() => openOverlay({ mod: "dcc-floors", kind: "dialog", width: 1000, height: 760, props: { space: space.id } }))
           .child(div().text_color(t.accent).font_semibold().child(`FLOOR ${floor}`))
           .child(div().max_w(140).truncate().text_color(t.muted).child(fl.name))
           .child(

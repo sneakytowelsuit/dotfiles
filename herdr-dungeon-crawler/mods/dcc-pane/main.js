@@ -2,7 +2,7 @@
 
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { panes, agents, props, run, theme, home } from "herdr";
+import { panes, agents, props, run, theme, home, openOverlay } from "herdr";
 import { who } from "./cast.js";
 import { avatar } from "./avatar.js";
 
@@ -55,7 +55,10 @@ export default class DccPane extends View {
       .on_hover((h, cx) => { this.hovered = h; cx.notify(); })
       .on_click(() => run("pane.focus", { pane }))
       .child(div().flex_none().w(3).h(14).rounded(1).bg(color))
-      .when(Boolean(c), (el) => el.child(avatar(t, p.status ?? ag.status, c, 30)))
+      .when(Boolean(c), (el) => el.child(
+        div().id(`dcc-pav-${pane}`).flex_none().cursor_pointer().tooltip("Choose character")
+          .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "dcc-cast", kind: "dialog", width: 1000, height: 520, props: { address: ag.address } }); })
+          .child(avatar(t, p.status ?? ag.status, c, 30))))
       .when(!c && Boolean(g?.icon), (el) => el.child(g.tint ? svg(g.icon).size(13).flex_none().text_color(t.muted) : image(g.icon).w(13).h(13).flex_none()))
       .child(div().flex_none().truncate().max_w(240).font_semibold().text_color(p.focused ? t.accent : t.foreground).child(name))
       .child(div().flex_1().truncate().text_color(t.dim).child((c ? `${g?.name ?? "agent"} · ` : "") + folder(p.cwd) + (p.branch ? `  ⎇ ${p.branch}` : "")))
