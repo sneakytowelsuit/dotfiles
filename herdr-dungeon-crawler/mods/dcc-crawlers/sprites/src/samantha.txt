@@ -1,33 +1,36 @@
 =mirror
-=H #2a1a14
-=c #5a3a2a
-=D #e8c8a0
-=d #c0a078
+=H #f0d060
+=h #c8a030
+=D #f4dcc4
+=d #d8b898
+=B #f0a0a0
 =E #c070ff
 =K #1a0a24
-=M #8a2030
-=W #f4f0e8
-............
-............
+=R #d01030
+=W #f8f4ec
+=T #e8304a
+=c #6a4a2a
 ............
 ............
 ............
 .......HHHHH
 .....HHHHHHH
-....HHcHHHcH
+....HHHhHHHH
 ...HHHHHHHHH
-..HHHDDDDDDD
-..HHDDDDDDDD
-..HHDDEEDDDD
-..HHDDEKDDDD
-..HHDDDDDDDD
-..HHdDDDDDdD
-...HHDDDMMMM
-...HHDDMWMWM
-....HDDDDDDD
-.....dDDDDDD
-.....dddDDDD
-......cdcdcd
+..HHHHHHHHHH
+..HHHHHHhHHH
+TTHHDDDDDDDD
+HHHHDDEEDDDD
+HHHHDDEKDDDD
+HHHHDDDDDDDD
+HHHHdBBDDDDD
+HHHHDDDDDDDD
+HHhHDDDRRRRR
+HHHHDDRWWWWW
+HHHH.DDRRRRR
+HcHH.dDDDDDD
+HcH...dddDDD
+.c.....ddddd
 ............
 ............
 ............

@@ -27,6 +27,13 @@ export function avatar(t, status, c, size = 56) {
       .child(div().absolute().left(mid).top(0).w(bar).h(sp).bg(color))
       .child(div().absolute().left(0).top(mid).w(sp).h(bar).bg(color));
 
+  // A floor badge ("F2") in the bottom-right corner, for a character tied to a floor (Mordecai's bodies).
+  const bw = Math.max(15, Math.round(size * 0.36));
+  const bh = Math.max(10, Math.round(size * 0.24));
+  const badge = () =>
+    div().absolute().left(inner - bw).top(inner - bh).w(bw).h(bh).rounded(2).bg(c.color).flex().items_center().justify_center()
+      .text_size(Math.max(7, Math.round(size * 0.17))).font_semibold().text_color("#140a06").child(`F${c.floor}`);
+
   return div().relative().flex_none().size(size).rounded(4).overflow_hidden()
     .bg(c.color + "26").border_1().border_color(s === "blocked" ? t.blocked : c.color)
     .child(body)
@@ -35,5 +42,6 @@ export function avatar(t, status, c, size = 56) {
     .when(s === "done", (el) =>
       el.child(sparkle(0.02, 0.04, 700, t.accent)).child(sparkle(0.76, 0.08, 950, "#fff2b0")).child(sparkle(0.72, 0.72, 1250, t.accent)).child(sparkle(0.04, 0.7, 820, "#fff2b0")))
     .when(s === "idle", (el) =>
-      el.child(div().absolute().left(at(0.62)).top(2).text_size(Math.max(7, size * 0.22)).font_semibold().text_color(t.muted).frames(["z", "z z", "z z Z", "z z Z"], 800)));
+      el.child(div().absolute().left(at(0.62)).top(2).text_size(Math.max(7, size * 0.22)).font_semibold().text_color(t.muted).frames(["z", "z z", "z z Z", "z z Z"], 800)))
+    .when(c.floor != null, (el) => el.child(badge()));
 }
