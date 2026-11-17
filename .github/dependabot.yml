@@ -1,0 +1,8 @@
+# Keeps the GitHub Actions in .github/workflows pinned to commit SHAs *and* current:
+# Dependabot opens a pull request when a pinned action has a newer release.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
