@@ -9,6 +9,7 @@
     ./agents.nix
     ./git.nix
     ./hyprland.nix
+    ./kdeconnect.nix
     ./emacs.nix
     ./shell.nix
     ./terminal.nix

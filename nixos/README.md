@@ -35,6 +35,7 @@ modules/nixos/            reusable system modules
   base.nix                  every machine: nix settings, locale, networking
   desktop.nix               GNOME, sound, printing
   yubikey.nix               YubiKey for sudo/polkit/login
+  kdeconnect.nix            KDE Connect firewall ports (the per-user side is modules/home/kdeconnect.nix)
   users/austin.nix          the account, zsh login shell, Home Manager wiring
 modules/home/             austin's Home Manager config, shared by all hosts
   shell.nix                 zsh, plugins, starship, atuin, zoxide, fzf, direnv
@@ -42,6 +43,7 @@ modules/home/             austin's Home Manager config, shared by all hosts
   git.nix                   git, gh, lazygit
   vscode.nix, agents.nix
   herdr-layout.nix          links ../../herdr-dungeon-crawler into ~/.config/herdr-app
+  kdeconnect.nix            KDE Connect daemon and tray icon
 ```
 
 New files must be `git add`ed before rebuilding: flakes only see files git tracks.

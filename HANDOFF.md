@@ -27,8 +27,8 @@ Written 2026-11-12 at commit `30bdca6`; updated 2026-11-14 after the terminal, H
 nixos/flake.nix              inputs + mkHost helper; `framework = mkHost "framework";`
 nixos/hosts/framework/       machine-specific: hardware, boot, NPU, fprintd, stateVersions
 nixos/modules/nixos/         base.nix, desktop.nix (shared: GDM, sound, printing), gnome.nix, hyprland.nix,
-                             keyboard.nix (keyd), yubikey.nix, users/austin.nix
-nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, herdr-layout.nix,
+                             keyboard.nix (keyd), yubikey.nix, kdeconnect.nix, users/austin.nix
+nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, herdr-layout.nix, kdeconnect.nix,
                              terminal.nix, hyprland.nix + hypr/*.lua
 nixos/pkgs/                  packages this repo defines (herdr-app), added to pkgs via overlays.default
 herdr-dungeon-crawler/       the Dungeon Crawler Carl Herdr layout (also a Herdr gallery layout); linked by herdr-layout.nix
@@ -146,6 +146,13 @@ Related setup ideas, once comfortable:
 - Mods share four modules by copy (`floors.js`, `scene.js`, `cast.js`, `avatar.js`): edit `mods/dcc-crawlers/` and run `herdr-dungeon-crawler/sync-shared.sh`. Sprites are text in `mods/dcc-crawlers/sprites/src/`, built by `sprites/build.sh`.
 - Floor choices live in Herdr's shared state (`dcc.floors` in `~/.config/herdr-app/shared.json`), not in Nix.
 
+## KDE Connect
+
+- **Two halves.** `modules/nixos/kdeconnect.nix` (imported by the host) turns on `programs.kdeconnect`, which opens TCP and UDP **1714-1764** in the firewall; `package = null` because Home Manager installs the app. `modules/home/kdeconnect.nix` runs the daemon (`kdeconnect.service`) and the tray icon (`kdeconnect-indicator.service`), but only where the system side is enabled (`osConfig.programs.kdeconnect.enable`), so a host that doesn't import the system module gets neither.
+- **Works under GNOME and Hyprland.** Both services hang off `graphical-session.target`, so a phone paired once works in either. The indicator needs a tray: Noctalia's default bar has one (`tray` in `bar.end`), and `tray.target` comes from Home Manager. GNOME has no tray without an extension; use `kdeconnect-app` there.
+- **Pairing is manual and not tested:** install KDE Connect on the phone, same Wi-Fi, then accept the request from the tray icon or `kdeconnect-app`. `kdeconnect-cli --list-devices` shows paired devices. The config builds clean (no warnings) but was never switched in or paired.
+- **Security trade-off.** The ports are open on **every** interface, including public Wi-Fi. Pairing needs approval on both sides and traffic is encrypted, but the ports are reachable. To avoid that, set `programs.kdeconnect.enable = false` on untrusted networks or restrict the ports to one interface with `networking.firewall.interfaces."<name>"`.
+
 ## Other open items
 
 - [ ] **Delete `/etc/nixos.old`**: it's the original config copy. It was verified to hold nothing not already in git (it differs only in the old hostname). It was moved aside so `/etc/nixos` could become a symlink to the repo: a stale `/etc/nixos/flake.nix` would otherwise be built by a bare `nixos-rebuild switch` and roll the system back. Deleting it needs `sudo rm -r /etc/nixos.old`, so Austin runs it when he's comfortable.
@@ -154,5 +161,6 @@ Related setup ideas, once comfortable:
 - [ ] **Java in Doom:** skipped because opening `.java` hung Emacs (cause not investigated).
 - [ ] **Remote branches:** three unmerged branches (`codex/fix-setup-scripts-for-aurora-compatibility`, `feat/mise-workstation`, `init-flakes`) were left untouched. Don't delete them without asking.
 - [ ] `~/.config/Code/User/settings.json.backup` is the pre-Home-Manager VS Code settings file. Safe to delete once Austin confirms he doesn't need anything from it.
+- [ ] **KDE Connect:** switch, then pair a phone and confirm the tray icon shows in Noctalia (see the KDE Connect section).
 - [ ] **Hyprland follow-ups:** confirm the live behaviour of the column swap and the swipe, and of the lock screen with YubiKey PIN, fingerprint and password. Not ported from niri yet: overview, `Mod+Home/End`, window-height binds.
 - [ ] **Branches:** `feat/terminals` and `feat/hyprland` were merged to `main` (2026-11-14); they can be deleted when Austin agrees.
