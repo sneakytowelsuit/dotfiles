@@ -14,6 +14,7 @@
     yq-go # the same for YAML, TOML and XML
     sqlite # sqlite3 shell: inspect app databases
     bc # calculator for shell arithmetic
+    bat
 
     # Scripting
     # Herdr's Claude Code hook (~/.claude/hooks/herdr-agent-state.sh) is a python3
