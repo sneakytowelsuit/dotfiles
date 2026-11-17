@@ -3,6 +3,9 @@
 { pkgs, ... }:
 
 {
+  # The Dungeon Crawler Carl layout, linked into ~/.config/herdr-app.
+  imports = [ ./herdr-layout.nix ];
+
   # Packaged in this repo (pkgs/herdr-app); brings nixpkgs' herdr-core with it.
   home.packages = [ pkgs.herdr-app ];
 

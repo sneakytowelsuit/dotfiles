@@ -41,6 +41,7 @@ modules/home/             austin's Home Manager config, shared by all hosts
   emacs.nix + doom/         Doom Emacs (doom/*.el is the Doom config)
   git.nix                   git, gh, lazygit
   vscode.nix, agents.nix
+  herdr-layout.nix          links ../../herdr-dungeon-crawler into ~/.config/herdr-app
 ```
 
 New files must be `git add`ed before rebuilding: flakes only see files git tracks.

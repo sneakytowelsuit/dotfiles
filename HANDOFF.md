@@ -28,9 +28,10 @@ nixos/flake.nix              inputs + mkHost helper; `framework = mkHost "framew
 nixos/hosts/framework/       machine-specific: hardware, boot, NPU, fprintd, stateVersions
 nixos/modules/nixos/         base.nix, desktop.nix (shared: GDM, sound, printing), gnome.nix, hyprland.nix,
                              keyboard.nix (keyd), yubikey.nix, users/austin.nix
-nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix,
+nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, herdr-layout.nix,
                              terminal.nix, hyprland.nix + hypr/*.lua
 nixos/pkgs/                  packages this repo defines (herdr-app), added to pkgs via overlays.default
+herdr-dungeon-crawler/       the Dungeon Crawler Carl Herdr layout (also a Herdr gallery layout); linked by herdr-layout.nix
 .luarc.json (repo root)      points lua-language-server at Hyprland's stubs (~/.config/hypr/stubs)
 ```
 
@@ -135,7 +136,15 @@ Related setup ideas, once comfortable:
 - `pkgs/herdr-app/package.nix`: upstream's prebuilt tarball, patched with `autoPatchelfHook`. `runtimeDependencies` cover the libraries it `dlopen`s (Vulkan, Wayland, EGL). The wrapper puts nixpkgs' `herdr-core` on `PATH` and sets `HERDR_TELEMETRY=0`.
 - **Update:** take the version and sha256 from `https://releases.herdr.dev/app/latest.json`. Ignore the app's own updater (it can't write to the store).
 - herdr-core runs as a `systemd-run` user unit (`hc-serve-*`). `users.users.austin.linger = true` keeps it, and the terminals in it, alive across logouts.
-- `~/.config/herdr-app/` is deliberately **not** managed by Nix: the app writes its own settings there.
+- `~/.config/herdr-app/` as a whole is **not** managed by Nix: the app writes its own settings, view state, `layouts/.state` and per-mod `.d.ts`/`jsconfig.json` there. Only the Dungeon Crawler Carl layout is managed, file by file, by `modules/home/herdr-layout.nix` (see below), so those directories stay real.
+
+### Dungeon Crawler Carl layout
+
+- Source of truth: `herdr-dungeon-crawler/` at the repo root. It is laid out like Herdr's config home (`layouts/`, `themes/`, `mods/`) with a `RECIPE.md`, `README.md` and `preview.png`, so it is also a **Herdr gallery layout**: the repo carries the `herdr-layout` topic, and anyone can install it by pointing an agent at `sneakytowelsuit/dotfiles`, folder `herdr-dungeon-crawler`.
+- `modules/home/herdr-layout.nix` (imported from `terminal.nix`) links each file of `layouts/`, `themes/` and `mods/` into `~/.config/herdr-app` with `xdg.configFile`, `force = true` (the files were first made by hand there). It skips the recipe, preview, `sprites/src/` and scripts. Edit in the repo, `git add` new files, rebuild; Herdr hot-reloads the links.
+- The files are read-only store links, so `layout.set` and other tree edits to `dungeon.json` fail by design; edit the repo copy. To try a change before rebuilding, edit a copy and delete the link.
+- Mods share four modules by copy (`floors.js`, `scene.js`, `cast.js`, `avatar.js`): edit `mods/dcc-crawlers/` and run `herdr-dungeon-crawler/sync-shared.sh`. Sprites are text in `mods/dcc-crawlers/sprites/src/`, built by `sprites/build.sh`.
+- Floor choices live in Herdr's shared state (`dcc.floors` in `~/.config/herdr-app/shared.json`), not in Nix.
 
 ## Other open items
 

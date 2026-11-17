@@ -1,0 +1,39 @@
+=mirror
+=H #1a1020
+=S #e6c3b0
+=s #c9a28e
+=E #3a2a6a
+=M #b0506a
+=P #6a3fa0
+=b #1c1c20
+=t #b0702e
+=n #4a4a56
+=e #e0b060
+=m #8a929e
+=Z #c9ced6
+=r #e0607a
+=Y #ffe040
+............
+......HHHHHH
+.....HHHHHHH
+....HHHHHHHH
+...HHHHHHHHH
+...HHHSSSSSS
+..HHHSSSSSSS
+..HHSSSSSSSS
+..HHSSESSSSS
+..HHSSSSSSSS
+..HHSSSSSSss
+..HHSSSSSSMM
+..HHHSSSSSSS
+..HHHHSSSSSS
+|..HHHHHSSSSSSSSSSHHHHH.Y
+|..HHHHHHSSSSSSSSHHHHHHY.
+|bbb.bbbPPPSSSSPPPbbb.bbb
+|btbbbtbPPPPSSPPPPbtbbbtb
+|bebbbebPPPPPPPPPPbebbbeb
+|bbtttbbPPPPPPPPPPbbtttbb
+|bbtntbbPPPPPPPPPPbbtntbb
+|bbtttbbPPPPPPPPPPbbtrtbb
+|.mZmZm.PPPPPPPPPP.bbbbb.
+|.ZmZmZ.PPPPPPPPPP.bbbbb.

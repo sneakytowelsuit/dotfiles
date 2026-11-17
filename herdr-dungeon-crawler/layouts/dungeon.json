@@ -1,0 +1,49 @@
+{
+  "id": "root",
+  "type": "column",
+  "titlebar": "none",
+  "traffic_lights": [16, 14],
+  "theme": "dungeon",
+  "font_size": 14,
+  "ui_font": "JetBrains Mono",
+  "preview": "layouts/dungeon.svg",
+  "toast": "dcc-toast",
+  "background": "canvas",
+  "children": [
+    { "id": "bar", "type": "block", "size": { "px": 40 }, "window_drag": true, "content": { "mod": "dcc-bar" } },
+    {
+      "id": "body",
+      "type": "row",
+      "divider": { "width": 1, "color": "border" },
+      "children": [
+        {
+          "id": "sidebar", "type": "column", "size": { "px": 280 }, "min": 190, "max": 440,
+          "divider": { "width": 1, "color": "border" },
+          "children": [
+            { "id": "scene", "type": "block", "size": { "px": 92 }, "content": { "mod": "dcc-scene" } },
+            { "id": "crawlers", "type": "block", "content": { "mod": "dcc-crawlers" } },
+            { "id": "system", "type": "block", "size": { "px": 230 }, "min": 100, "content": { "mod": "dcc-system" } }
+          ]
+        },
+        {
+          "id": "main",
+          "type": "block",
+          "padding": 6,
+          "content": {
+            "tab": "active",
+            "pane": {
+              "gap": 6,
+              "radius": 3,
+              "background": "background",
+              "border": { "width": 1, "color": "border" },
+              "focus": { "width": 1, "color": "accent" },
+              "header": { "content": { "mod": "dcc-pane" }, "height": 38, "position": "top", "reveal": "always" },
+              "lone": true
+            }
+          }
+        }
+      ]
+    },
+    { "id": "status", "type": "block", "size": { "px": 26 }, "content": { "mod": "dcc-status" } }
+  ]
+}

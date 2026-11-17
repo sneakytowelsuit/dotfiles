@@ -1,0 +1,34 @@
+=B #3f78d4
+=b #2a56a6
+=L #8fb8f4
+=P #f08fb4
+=D #f9c4d8
+=R #e0455a
+=E #111111
+=Y #f2d23a
+=W #f4f4e8
+=N #1a2f5c
+.
+.
+.
+...............PDP
+..............PPBBBBBB
+..............PBBYEBBBBB
+..............BBBBBBBBNB
+..............bBBBWBWBWB
+...............bbbbbbbbb
+............BBBBLL
+..........BBBBBBLLP
+........BBBBBBBBBLLPPW
+..PRRBRBRBBBBBBBBLLP
+RRDRBBBBBBBBBBBBBBLL
+.PRRBRBRBBBBBBBBLL
+........BBBBBBBBB
+.........BBBBBBB
+.........BBBB.BB
+..........BBB.BB
+..........BBb.Bb
+..........bbb.bb
+..........bbbbbbb
+...........bbWbbW
+.
