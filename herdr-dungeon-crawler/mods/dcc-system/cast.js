@@ -33,11 +33,40 @@ export const CAST = [
   { name: "Lucia Mar", color: "#8a6ad8", role: "Lajabless + dogs",
     snark: "Please do not tell the dogs. They will want a say.",
     say: { working: "Cici! Gustavo! Attack!", blocked: "Don't make me ask twice.", done: "Good dogs.", idle: "Resting. The dogs are watching." } },
+  { name: "Samantha", color: "#d0b090", role: "Severed head",
+    snark: "The System apologizes in advance for her vocabulary.",
+    say: { working: "Bite first. Ask later.", blocked: "HEY. HEY. I'm TALKING to you.", done: "Ha! Tell my mother I won.", idle: "Do NOT roll me." } },
+  { name: "Louis", color: "#7a9a5a", role: "Army Air General",
+    snark: "He will make a joke about this. Probably two.",
+    say: { working: "Cloud of Exhaust, baby!", blocked: "Okay, okay, okay, I need a hand here.", done: "Mission accomplished. Anyone got a drink?", idle: "Resting my... lungs." } },
+  { name: "Firas", color: "#d0a850", role: "Hammersmith",
+    snark: "Reliable. Mostly sober. The System is impressed.",
+    say: { working: "Hammer time. Sorry. Hammer time.", blocked: "I'll need a decision, boss.", done: "Done. Quietly.", idle: "Sitting this one out." } },
+  // Mordecai's other bodies, one per floor the wiki gives him a form for (floors 1 to 9). Floor 1 is "Mordecai".
+  // Picked by hand only: automatic assignment never chooses a variant.
+  { name: "Mordecai (Bugaboo)", variant: true, color: "#8a7aa0", role: "Floor 2 · Bugaboo",
+    snark: "Fur, fangs and a grudge. Mordecai has seen worse. Mordecai has been worse.",
+    say: { working: "I am large and angry and working.", blocked: "Kid. Look at this. Now.", done: "Huh. Nobody died.", idle: "Resting. Do not wake the Bugaboo." } },
+  { name: "Mordecai (Incubus)", variant: true, color: "#c04050", role: "Floor 3 · Incubus",
+    snark: "Guildmaster chic. The horns are a management decision.",
+    say: { working: "Managing. Dramatically.", blocked: "I need a decision from my favorite client.", done: "A flawless performance.", idle: "Off the clock, darling." } },
+  { name: "Mordecai (Grulke)", variant: true, color: "#6aa84a", role: "Floor 4 · Grulke Infantry",
+    snark: "A toad in armor, managing a cat. Nobody on the Fourth Floor asked questions.",
+    say: { working: "Ribbit. I mean, forward!", blocked: "Orders, sir? Ma'am? Kid?", done: "Victory. Croak.", idle: "Sitting in a puddle." } },
+  { name: "Mordecai (Pocket Kuma)", variant: true, color: "#b08050", role: "Floor 6 · Pocket Kuma",
+    snark: "Fairy-infused and pocket-sized. The System has never seen him this approachable, and it intends to enjoy it.",
+    say: { working: "Tiny but furious.", blocked: "Kid, I am pocket-sized and I need you.", done: "Small bear, big result.", idle: "Napping in your pocket." } },
+  { name: "Mordecai (Cyclops)", variant: true, color: "#e898b0", role: "Floor 8 · Hills Cyclops",
+    snark: "Large, pink and one-eyed. The card game will be taken very seriously.",
+    say: { working: "One eye on the problem.", blocked: "I can see you ignoring me. With my one eye.", done: "Pink and proud.", idle: "Eye closed. Mostly." } },
+  { name: "Mordecai (Human)", variant: true, color: "#d04040", role: "Floor 9 · Human, eh",
+    snark: "The System has presented him as Canadian. The accent was not optional.",
+    say: { working: "Sorry, working, eh.", blocked: "Sorry, but I need you to look at this, eh.", done: "Beauty. Done, eh.", idle: "Grabbing a double-double." } },
 ];
 
 
 // Pixel-art portrait (24x24 SVG, built by sprites/build.sh from sprites/src/*.txt).
-export const sprite = (c) => `mods/dcc-crawlers/sprites/${c.name.replace("Princess ", "").toLowerCase().replace(/ /g, "-")}.svg`;
+export const sprite = (c) => `mods/dcc-crawlers/sprites/${c.name.replace("Princess ", "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "")}.svg`;
 
 // Characters picked by hand, kept in shared state under "dcc.cast": { "<agent address>": "<character name>" }.
 const picks = () => {
@@ -51,7 +80,8 @@ export function who(key) {
   if (picked) return picked;
   let h = 0;
   for (const c of String(key)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return CAST[h % CAST.length];
+  const pool = CAST.filter((c) => !c.variant); // variants (Mordecai's other bodies) are only ever picked by hand
+  return pool[h % pool.length];
 }
 
 export const isCastPicked = (key) => picks()[key] != null;

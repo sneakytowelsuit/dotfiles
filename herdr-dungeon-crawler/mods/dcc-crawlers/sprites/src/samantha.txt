@@ -1,0 +1,33 @@
+=mirror
+=H #2a1a14
+=c #5a3a2a
+=D #e8c8a0
+=d #c0a078
+=E #c070ff
+=K #1a0a24
+=M #8a2030
+=W #f4f0e8
+............
+............
+............
+............
+............
+.......HHHHH
+.....HHHHHHH
+....HHcHHHcH
+...HHHHHHHHH
+..HHHDDDDDDD
+..HHDDDDDDDD
+..HHDDEEDDDD
+..HHDDEKDDDD
+..HHDDDDDDDD
+..HHdDDDDDdD
+...HHDDDMMMM
+...HHDDMWMWM
+....HDDDDDDD
+.....dDDDDDD
+.....dddDDDD
+......cdcdcd
+............
+............
+............

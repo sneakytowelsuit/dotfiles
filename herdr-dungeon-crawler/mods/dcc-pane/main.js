@@ -101,7 +101,7 @@ export default class DccPane extends View {
       .child(div().flex_none().w(3).h(14).rounded(1).bg(color))
       .when(Boolean(c), (el) => el.child(
         div().id(`dcc-pav-${pane}`).flex_none().cursor_pointer().tooltip("Choose character")
-          .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "dcc-cast", kind: "dialog", width: 1000, height: 520, props: { address: ag.address } }); })
+          .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "dcc-cast", kind: "dialog", width: 1100, height: 780, props: { address: ag.address } }); })
           .child(avatar(t, p.status ?? ag.status, c, 30))))
       .when(!c && Boolean(g?.icon), (el) => el.child(g.tint ? svg(g.icon).size(13).flex_none().text_color(t.muted) : image(g.icon).w(13).h(13).flex_none()))
       .child(div().flex_none().truncate().max_w(240).font_semibold().text_color(p.focused ? t.accent : t.foreground).child(name))

@@ -8,8 +8,8 @@ import { props, closeOverlay, agents, theme } from "herdr";
 import { CAST, who, setCast, isCastPicked } from "./cast.js";
 import { avatar } from "./avatar.js";
 
-const CARD_W = 178;
-const PER_ROW = 5;
+const CARD_W = 140;
+const PER_ROW = 7;
 
 export default class DccCast extends View {
   card(t, c, status, current, address, overlay) {
@@ -18,6 +18,7 @@ export default class DccCast extends View {
       .id(`dcc-cast-${c.name}`)
       .flex_none()
       .w(CARD_W)
+      .h(214)
       .p(10)
       .gap(6)
       .items_center()
@@ -29,8 +30,8 @@ export default class DccCast extends View {
       .hover((s) => s.border_color(c.color))
       .on_click(() => { setCast(address, c.name); closeOverlay(overlay); })
       .child(avatar(t, status, c, 56))
-      .child(div().text_size(13).font_semibold().text_color(t.foreground).child(c.name))
-      .child(div().text_size(10).text_color(t.dim).child(c.role))
+      .child(div().min_h(32).text_size(12).font_semibold().text_color(t.foreground).text_center().child(c.name))
+      .child(div().min_h(26).text_size(10).text_color(t.dim).text_center().child(c.role))
       .child(div().min_h(42).text_size(10).text_color(c.color).text_center().child(`"${c.say[status] ?? c.say.idle}"`))
       .child(div().h(14).when(on, (el) => el.child(div().px(5).text_size(9).font_semibold().rounded(2).bg(c.color).text_color("#140a06").child("CURRENT"))));
   }
