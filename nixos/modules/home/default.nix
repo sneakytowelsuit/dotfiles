@@ -13,6 +13,7 @@
     ./emacs.nix
     ./shell.nix
     ./terminal.nix
+    ./tools.nix
     ./vscode.nix
   ];
 

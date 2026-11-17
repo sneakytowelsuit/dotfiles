@@ -44,6 +44,7 @@ modules/home/             austin's Home Manager config, shared by all hosts
   vscode.nix, agents.nix
   herdr-layout.nix          links ../../herdr-dungeon-crawler into ~/.config/herdr-app
   kdeconnect.nix            KDE Connect daemon and tray icon
+  tools.nix                 everyday CLI tools: jq, yq, python3, fd, tree, file, imagemagick, ...
 ```
 
 New files must be `git add`ed before rebuilding: flakes only see files git tracks.
