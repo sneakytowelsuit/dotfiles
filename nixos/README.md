@@ -45,6 +45,7 @@ modules/home/             austin's Home Manager config, shared by all hosts
   herdr-layout.nix          links ../../herdr-dungeon-crawler into ~/.config/herdr-app
   kdeconnect.nix            KDE Connect daemon and tray icon
   tools.nix                 everyday CLI tools: jq, yq, python3, fd, tree, file, imagemagick, ...
+  cursor.nix                Bibata Modern Classic cursor, 32px, for GNOME and Hyprland
 ```
 
 New files must be `git add`ed before rebuilding: flakes only see files git tracks.

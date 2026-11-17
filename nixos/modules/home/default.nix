@@ -12,6 +12,7 @@
     ./kdeconnect.nix
     ./emacs.nix
     ./shell.nix
+    ./cursor.nix
     ./terminal.nix
     ./tools.nix
     ./vscode.nix

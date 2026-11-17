@@ -28,7 +28,7 @@ nixos/flake.nix              inputs + mkHost helper; `framework = mkHost "framew
 nixos/hosts/framework/       machine-specific: hardware, boot, NPU, fprintd, stateVersions
 nixos/modules/nixos/         base.nix, desktop.nix (shared: GDM, sound, printing), gnome.nix, hyprland.nix,
                              keyboard.nix (keyd), yubikey.nix, kdeconnect.nix, users/austin.nix
-nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, herdr-layout.nix, kdeconnect.nix, tools.nix,
+nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, herdr-layout.nix, kdeconnect.nix, tools.nix, cursor.nix,
                              terminal.nix, hyprland.nix + hypr/*.lua
 nixos/pkgs/                  packages this repo defines (herdr-app), added to pkgs via overlays.default
 herdr-dungeon-crawler/       the Dungeon Crawler Carl Herdr layout (also a Herdr gallery layout); linked by herdr-layout.nix
@@ -153,6 +153,10 @@ Related setup ideas, once comfortable:
 - **Works under GNOME and Hyprland.** Both services hang off `graphical-session.target`, so a phone paired once works in either. The indicator needs a tray: Noctalia's default bar has one (`tray` in `bar.end`), and `tray.target` comes from Home Manager. GNOME has no tray without an extension; use `kdeconnect-app` there.
 - **Pairing is manual and not tested:** install KDE Connect on the phone, same Wi-Fi, then accept the request from the tray icon or `kdeconnect-app`. `kdeconnect-cli --list-devices` shows paired devices. The config builds clean (no warnings) but was never switched in or paired.
 - **Security trade-off.** The ports are open on **every** interface, including public Wi-Fi. Pairing needs approval on both sides and traffic is encrypted, but the ports are reachable. To avoid that, set `programs.kdeconnect.enable = false` on untrusted networks or restrict the ports to one interface with `networking.firewall.interfaces."<name>"`.
+
+## Cursor
+
+`modules/home/cursor.nix` sets **Bibata Modern Classic at 32px** (a large black arrow with a white outline, with the full set of shapes: pointing hand, text beam, grab, resize). Before it, Hyprland had only `XCURSOR_SIZE`/`HYPRCURSOR_SIZE` and no theme, so it drew its bare fallback, which never changed shape over links. Home Manager covers GTK (`settings.ini`), GNOME (dconf) and `XCURSOR_THEME`; **Hyprland needs its own copy** of the name and size in `hypr/10-settings.lua` (a UWSM session doesn't reliably see Home Manager's session variables), and `cursor.enable_hyprcursor = false` there because Bibata is an xcursor theme with no hyprcursor build. Change the name and size in both places together. The env vars are read when Hyprland starts, so **log out and back in** after switching; `hyprctl setcursor Bibata-Modern-Classic 32` applies it to the running session. `Bibata-Modern-Amber` (yellow) and `-Ice` (white) are in the same package if a different colour is easier to find.
 
 ## Everyday tools
 
