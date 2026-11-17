@@ -103,7 +103,7 @@ export default class DccCrawlers extends View {
           .items_center()
           .child(
             div().id(`dcc-av-${a.address}`).flex_none().cursor_pointer().tooltip("Choose character")
-              .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "dcc-cast", kind: "dialog", width: 1100, height: 780, props: { address: a.address } }); })
+              .on_click((_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "dcc-cast", kind: "dialog", width: 1260, height: 780, props: { address: a.address } }); })
               .child(avatar(t, a.status, c)),
           )
           .child(

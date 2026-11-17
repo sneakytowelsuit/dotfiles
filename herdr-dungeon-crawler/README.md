@@ -1,6 +1,6 @@
 # Dungeon Crawler Carl for Herdr
 
-A complete [Herdr](https://herdr.dev) layout themed on *Dungeon Crawler Carl*: spaces are floors of the World Dungeon (11 of them, each with its own theme and animated scene), agents are crawlers drawn as animated 24×24 pixel portraits (19 characters, including every floor form of Mordecai; click one to change who it is), and a System AI narrates. See [RECIPE.md](RECIPE.md) for exactly what it looks like and does.
+A complete [Herdr](https://herdr.dev) layout themed on *Dungeon Crawler Carl*: spaces are floors of the World Dungeon (11 of them, each with its own theme and animated scene), agents are crawlers drawn as animated 24×24 pixel portraits (22 characters, including every floor form of Mordecai; click one to change who it is), and a System AI narrates. See [RECIPE.md](RECIPE.md) for exactly what it looks like and does.
 
 ![Preview](preview.png)
 

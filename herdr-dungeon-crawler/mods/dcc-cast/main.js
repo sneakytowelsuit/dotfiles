@@ -9,7 +9,7 @@ import { CAST, who, setCast, isCastPicked } from "./cast.js";
 import { avatar } from "./avatar.js";
 
 const CARD_W = 140;
-const PER_ROW = 7;
+const PER_ROW = 8;
 
 export default class DccCast extends View {
   card(t, c, status, current, address, overlay) {

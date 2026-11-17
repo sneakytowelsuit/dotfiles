@@ -42,6 +42,15 @@ export const CAST = [
   { name: "Firas", color: "#d0a850", role: "Hammersmith",
     snark: "Reliable. Mostly sober. The System is impressed.",
     say: { working: "Hammer time. Sorry. Hammer time.", blocked: "I'll need a decision, boss.", done: "Done. Quietly.", idle: "Sitting this one out." } },
+  { name: "Rend", color: "#e8b090", role: "Tummy Acher",
+    snark: "Rend is small, round and hungry. Keep fingers clear of the tooth.",
+    say: { working: "Hee hee hee! *chomp*", blocked: "*sniffle* ...hee?", done: "*burp* Hee!", idle: "Zzz... bacon..." } },
+  { name: "Sluggalo", color: "#f2d23a", role: "Clown slug",
+    snark: "The makeup is not up for discussion. Neither is the hatchet.",
+    say: { working: "Honk. Squelch. Hatchet.", blocked: "Slime. Wait. You.", done: "Ta-da! Splat.", idle: "Oozing quietly. Do not poke the hatchet." } },
+  { name: "Florin", color: "#5a9a4a", role: "Crocodilian General",
+    snark: "He judges every decision by who it will get killed. The System respects that.",
+    say: { working: "Moving out. Nobody dies, mate.", blocked: "Need a call here, or people get killed.", done: "Done. Everyone's breathing.", idle: "Cleaning the shotgun." } },
   // Mordecai's other bodies, one per floor the wiki gives him a form for (floors 1 to 9). Floor 1 is "Mordecai".
   // Picked by hand only: automatic assignment never chooses a variant.
   { name: "Mordecai (Bugaboo)", variant: true, floor: 2, color: "#8a7aa0", role: "Floor 2 · Bugaboo",
