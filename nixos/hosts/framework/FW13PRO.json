@@ -16,7 +16,7 @@
             "balance": 0.0,
             "bypass": false,
             "decramp": "Off",
-            "input-gain": 0.0,
+            "input-gain": -5.0,
             "left": {
                 "band0": {
                     "frequency": 29.952623149688797,
@@ -264,7 +264,7 @@
             "bypass": false,
             "decramp": "Off",
             "equal-mode": "IIR",
-            "frequency": 120.0,
+            "frequency": 100.0,
             "gain": 36.0,
             "input-gain": 0.0,
             "mode": "RLC (BT)",
@@ -284,7 +284,7 @@
             "bypass": false,
             "dithering": "None",
             "gain-boost": true,
-            "input-gain": -2.0,
+            "input-gain": 0.0,
             "input-to-link": -80.01,
             "input-to-sidechain": -80.01,
             "link-to-input": -80.01,
@@ -292,14 +292,14 @@
             "lookahead": 4.0,
             "mode": "Herm Thin",
             "output-gain": 0.0,
-            "oversampling": "None",
+            "oversampling": "Half x2(2L)",
             "release": 8.0,
             "sidechain-preamp": 0.0,
             "sidechain-to-input": -80.01,
             "sidechain-to-link": -80.01,
             "sidechain-type": "Internal",
             "stereo-link": 100.0,
-            "threshold": 0.0
+            "threshold": -1.0
         },
         "multiband_compressor#0": {
             "band0": {

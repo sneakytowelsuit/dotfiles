@@ -66,7 +66,7 @@ Doom and its packages are built by Nix ([nix-doom-emacs-unstraightened](https://
 
 The Framework host enables EasyEffects through Home Manager. It starts with either GNOME or Hyprland and loads `FW13PRO` into the output pipeline; it does not select an input/microphone preset. PipeWire is already enabled by `modules/nixos/desktop.nix`.
 
-`hosts/framework/FW13PRO.json` is an unmodified copy of [hegocre's Framework 13 Pro preset](https://gist.github.com/hegocre/fea11a58e47a445d0b470f377cfaa655/a94384289dee679bc5794850cbf54f9af28ec179). Keeping the JSON in this repo makes rebuilds reproducible without downloading a changing gist. Home Manager writes it to `~/.local/share/easyeffects/output/FW13PRO.json`; edit the repo copy to persist changes, or save a separately named preset in the app for experiments.
+`hosts/framework/FW13PRO.json` is [hegocre's Framework 13 Pro preset](https://gist.github.com/hegocre/fea11a58e47a445d0b470f377cfaa655/a94384289dee679bc5794850cbf54f9af28ec179) with a few local tweaks for headroom: EQ input gain -5 dB, high-pass 100 Hz (was 120), and limiter input gain 0 dB, threshold -1 dB, 2x oversampling. Keeping the JSON in this repo makes rebuilds reproducible without downloading a changing gist. Home Manager writes it to `~/.local/share/easyeffects/output/FW13PRO.json`; edit the repo copy to persist changes, or save a separately named preset in the app for experiments.
 
 Apply with the normal `sudo nixos-rebuild switch`. After changing the preset, reload it with `systemctl --user restart easyeffects`. Check the daemon with `systemctl --user status easyeffects` and open `easyeffects` to inspect the effects.
 
