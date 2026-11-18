@@ -62,6 +62,16 @@ New files must be `git add`ed before rebuilding: flakes only see files git track
 
 Doom and its packages are built by Nix ([nix-doom-emacs-unstraightened](https://github.com/marienz/nix-doom-emacs-unstraightened)), so there is no `doom sync`: edit `modules/home/doom/*.el` and rebuild. Emacs runs as a background service; `$EDITOR` is `emacsclient -t`. After a rebuild, restart it to load the new config: `systemctl --user restart emacs`.
 
+## EasyEffects (Framework 13 Pro)
+
+The Framework host enables EasyEffects through Home Manager. It starts with either GNOME or Hyprland and loads `FW13PRO` into the output pipeline; it does not select an input/microphone preset. PipeWire is already enabled by `modules/nixos/desktop.nix`.
+
+`hosts/framework/FW13PRO.json` is an unmodified copy of [hegocre's Framework 13 Pro preset](https://gist.github.com/hegocre/fea11a58e47a445d0b470f377cfaa655/a94384289dee679bc5794850cbf54f9af28ec179). Keeping the JSON in this repo makes rebuilds reproducible without downloading a changing gist. Home Manager writes it to `~/.local/share/easyeffects/output/FW13PRO.json`; edit the repo copy to persist changes, or save a separately named preset in the app for experiments.
+
+Apply with the normal `sudo nixos-rebuild switch`. After changing the preset, reload it with `systemctl --user restart easyeffects`. Check the daemon with `systemctl --user status easyeffects` and open `easyeffects` to inspect the effects.
+
+This is speaker tuning, but the startup preset follows the selected output device, including headphones, USB audio, or Bluetooth. Bypass the effects for those devices, or configure device-specific profiles in EasyEffects' Presets → Autoload tab. To rely exclusively on those profiles, remove `preset.output = "FW13PRO";` from the host configuration and rebuild; selecting an empty-effects preset for other devices avoids carrying the speaker tuning across device changes. This repo deliberately does not guess a PipeWire device name.
+
 ## One-time setup outside Nix
 
 - YubiKey for sudo: `pamu2fcfg -N > ~/.config/Yubico/u2f_keys` (key needs its FIDO2 PIN)

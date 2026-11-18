@@ -35,5 +35,15 @@
   # defaults (databases, file layouts) compatible with existing data.
   # A new machine gets whatever release it is installed with.
   system.stateVersion = "26.05";
-  home-manager.users.austin.home.stateVersion = "26.05";
+  home-manager.users.austin = {
+    home.stateVersion = "26.05";
+
+    # Framework 13 Pro speaker tuning; keep this hardware-specific preset here.
+    # Home Manager installs EasyEffects and starts it with the graphical session.
+    services.easyeffects = {
+      enable = true;
+      preset.output = "FW13PRO";
+      extraPresets.FW13PRO = builtins.fromJSON (builtins.readFile ./FW13PRO.json);
+    };
+  };
 }
