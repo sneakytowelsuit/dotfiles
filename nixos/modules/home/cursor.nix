@@ -16,7 +16,7 @@
 
 let
   name = "Bibata-Modern-Classic";
-  size = 32;
+  size = 16;
 in
 {
   home.pointerCursor = {
