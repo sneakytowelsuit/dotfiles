@@ -1,5 +1,11 @@
 # Settings every machine gets, desktop or not.
-{ inputs, pkgs, ... }:
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Adds this repo's own packages (pkgs/) to `pkgs`. Home Manager shares this
@@ -38,5 +44,19 @@
   # System-wide basics, available to root too. Per-user tools and their
   # configuration live in Home Manager (modules/home).
   programs.git.enable = true;
-  environment.systemPackages = [ pkgs.vim ];
+  environment.systemPackages = [
+    pkgs.vim
+    # nixd (Emacs/VS Code Nix LSP) keeps two `nixd-attrset-eval` workers alive,
+    # each holding a nix-daemon connection with a shared lock on
+    # /nix/var/nix/db/big-lock. A root `nix-instantiate` in nixos-rebuild then
+    # blocks on that lock for minutes. Kill the workers first; nixd and Eglot
+    # keep running (diagnostics, formatting, go-to-definition), and
+    # `M-x eglot-reconnect` brings back nixpkgs/option completion.
+    (lib.hiPrio (
+      pkgs.writeShellScriptBin "nixos-rebuild" ''
+        ${pkgs.procps}/bin/pkill -KILL -x nixd-attrset-eval || true
+        exec ${config.system.build.nixos-rebuild}/bin/nixos-rebuild "$@"
+      ''
+    ))
+  ];
 }
