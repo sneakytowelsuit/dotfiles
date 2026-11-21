@@ -11,6 +11,8 @@ import { spaces, run, theme, hc, shared, setShared, openOverlay, setAgentOrder }
 import { ORDER, NAME, SAYS, STALL_MS, needs, sorted, colorOf, ink, go, halo, model, age, markState, markSeen } from "./attn.js";
 import { parse, signature } from "./activity.js";
 import { observe } from "./observe.js";
+import { wake, untilText } from "./snooze.js";
+import { autoNudgeTick } from "./recover-actions.js";
 
 const own = (el) => el.on_mouse_down("left", (_e, cx) => cx.stop_propagation());
 
@@ -43,6 +45,13 @@ export default class ConductQueue extends View {
     // The feed and the alerts watch the same snapshot (with since filled in for the flicker rule).
     for (const n of m.list) n.since ??= since[n.address]?.t ?? null;
     observe(m.nodes, now);
+    // Snoozes that ran out: let the agent come back as unread.
+    const sz = shared("conduct.snooze");
+    if (sz && Object.keys(sz).length) {
+      const w = wake(sz, m.nodes, now);
+      if (w.changed) setShared("conduct.snooze", w.state);
+      if (w.woken.length) { const seen = { ...(shared("conduct.seen") ?? {}) }; for (const a of w.woken) delete seen[a]; setShared("conduct.seen", seen); }
+    }
     // A "finished" that follows your own answer is the aftermath, not news: mark it read.
     const answered = { ...(shared("conduct.answered") ?? {}) };
     let spent = false;
@@ -70,6 +79,11 @@ export default class ConductQueue extends View {
     const limit = shared("conduct.stall_ms") ?? STALL_MS;
     const stalled = work.filter((n) => now - (this.sigs.get(n.address)?.t ?? now) > limit).map((n) => n.address).sort();
     if (JSON.stringify(stalled) !== JSON.stringify(shared("conduct.stalled") ?? [])) setShared("conduct.stalled", stalled);
+    // Opt-in auto-nudge counts from when the stall began (one status check per stall; off unless switched on in Recover).
+    const stuckSince = (this.stuck ??= new Map());
+    for (const a of stalled) if (!stuckSince.has(a)) stuckSince.set(a, now);
+    for (const a of [...stuckSince.keys()]) if (!stalled.includes(a)) stuckSince.delete(a);
+    await autoNudgeTick(new Map(m.list.map((n) => [n.address, { ...n, stuckSince: stuckSince.get(n.address) }])), now);
   }
 
   button(t, id, label, color, onClick) {
@@ -131,7 +145,7 @@ export default class ConductQueue extends View {
       .on_click(() => go(a))
       .child(div().flex_none().size(7).rounded_full().border_1().border_color(color).when(a.status === "working", (el) => el.bg(color).loop("opacity", { from: 0.35, to: 1, period: 1200 })))
       .child(div().flex_none().max_w(120).truncate().text_size(11).text_color(t.muted).child(a.title))
-      .child(div().flex_1().min_w(0).truncate().text_size(10).text_color(t.dim).child(act ? `${act.verb}… ${act.stats}` : a.msg))
+      .child(div().flex_1().min_w(0).truncate().text_size(10).text_color(t.dim).child(a.snoozed ? `⏱ snoozed until ${untilText(a.snoozeUntil, Date.now())}` : act ? `${act.verb}… ${act.stats}` : a.msg))
       .child(div().flex_none().text_size(10).text_color(t.dim).child(a.status === "idle" ? "" : age(a.since)));
   }
 
@@ -145,6 +159,7 @@ export default class ConductQueue extends View {
     const idle = sorted(kids.filter((k) => k.status === "idle"));
     const quiet = sorted(kids.filter((k) => k.status === "working"));
     const fin = kids.filter((k) => k.status === "done" && k.fresh);
+    const snoozed = kids.filter((k) => k.snoozed);
     const fkey = `${p.address}:fin`;
     const key = `${p.address}:idle`;
     const chips = ORDER.filter((s) => count(s) > 0).map((s) => {
@@ -169,6 +184,7 @@ export default class ConductQueue extends View {
         ),
       h_flex().mx(8).px(8).pt(5).pb(2).gap(4).flex_wrap().children(chips),
       ...quiet.map((k) => this.line(t, k, true)),
+      ...snoozed.map((k) => this.line(t, k, true)),
       fin.length
         ? own(h_flex()).id(`c-f-${p.address}`).ml(22).mr(8).px(8).py(4).gap(6).items_center().rounded(3).cursor_pointer().hover((x) => x.bg(t.hover))
             .on_click((_e, cx) => { this.open.has(fkey) ? this.open.delete(fkey) : this.open.add(fkey); cx.notify(); })

@@ -279,6 +279,8 @@ export default class ConductTriage extends View {
       case "back": if (n) this.back(n, form); return;
       case "skip": if (n && form?.tabs) { this.stage.delete(n.address); press(n.address, "right"); this.bump(n, form, +1); this.look(n); cx.notify(); } return;
       case "dismiss": if (n) { press(n.address, "esc"); this.look(n); } return;
+      case "snooze": if (n) { closeOverlay(props().overlay); openOverlay({ mod: "conduct-snooze", kind: "dialog", width: 0.3, props: { address: n.address } }); } return;
+      case "recover": if (n) { closeOverlay(props().overlay); openOverlay({ mod: "conduct-recover", kind: "dialog", width: 0.45, height: 0.8, props: { address: n.address } }); } return;
       case "close": if (this.leave) { this.leave = null; cx.notify(); } else closeOverlay(props().overlay); return;
       case "enter":
         if (form?.preview != null) this.selectPreview(n, form, q);
@@ -595,6 +597,7 @@ export default class ConductTriage extends View {
         el.child(h_flex().gap(10).items_center().px(12).py(8).rounded(8).bg(color + "22").border_1().border_color(color)
           .child(div().flex_1().text_size(12).text_color(t.foreground).child("This agent's questions aren't finished. Leave anyway?"))
           .child(h_flex().id("c-leave-go").h(26).px(11).items_center().rounded(8).cursor_pointer().text_size(11).font_semibold().bg(color).text_color(ink(color)).on_click(this.on(() => this.act(this.leave.action))).child(this.leave?.action === "read" ? "Mark read" : "Leave unread"))
+          .child(h_flex().id("c-leave-snooze").h(26).px(11).items_center().rounded(8).cursor_pointer().text_size(11).font_semibold().border_1().border_color(t.input).bg(t.raised).on_click(this.on(() => { this.leave = null; this.act("snooze"); })).child("Snooze…"))
           .child(h_flex().id("c-leave-stay").h(26).px(11).items_center().rounded(8).cursor_pointer().text_size(11).font_semibold().border_1().border_color(t.input).bg(t.raised).on_click(this.on(() => this.act("stay"))).child("Stay"))))
       .child(
         n
@@ -611,7 +614,20 @@ export default class ConductTriage extends View {
                           .border_1().border_color(color).text_color(color).hover((x) => x.bg(color).text_color(ink(color)))
                           .tooltip(`Drop into this agent's terminal (${show("go")})`)
                           .on_click(this.on(() => this.act("go"))).child("GO TO AGENT"),
-                      ),
+                      )
+                      .child(
+                        div().id("c-snooze").flex_none().h(22).px(9).flex().items_center().rounded(11).cursor_pointer().text_size(10).font_semibold()
+                          .border_1().border_color(t.input).text_color(t.muted).hover((x) => x.bg(t.hover))
+                          .tooltip(`Snooze this agent (${show("snooze")})`)
+                          .on_click(this.on(() => this.act("snooze"))).child("SNOOZE"),
+                      )
+                      .when(n.status === "stalled" || n.status === "error", (el) =>
+                        el.child(
+                          div().id("c-recover").flex_none().h(22).px(9).flex().items_center().rounded(11).cursor_pointer().text_size(10).font_semibold()
+                            .border_1().border_color(t.input).text_color(t.muted).hover((x) => x.bg(t.hover))
+                            .tooltip(`Status check, interrupt, restart (${show("recover")})`)
+                            .on_click(this.on(() => this.act("recover"))).child("RECOVER"),
+                        )),
                   )
                   .child(div().text_size(11).text_color(t.dim).child(`${parent ? `↳ ${parent.title} · ` : ""}${n.name ? `${n.name} · ` : ""}${n.address} · ${n.spaceName} / ${n.tabName}`))
                   .when(Boolean(n.msg || n.kind) && !form, (el) => el.child(div().text_size(12).text_color(t.foreground).child(n.msg || `waiting: ${n.kind}`))),
@@ -653,6 +669,8 @@ export default class ConductTriage extends View {
           .child(this.hint(t, show("go"), "go to agent", () => this.act("go")))
           .child(this.hint(t, show("nudge"), "nudge primary", () => this.act("nudge")))
           .child(this.hint(t, show("review"), nFin ? `finished (${nFin})` : "finished", () => this.act("review")))
+          .child(this.hint(t, show("snooze"), "snooze", () => this.act("snooze")))
+          .child(this.hint(t, show("recover"), "recover", () => this.act("recover")))
           .child(this.hint(t, show("raw"), "raw screen", () => this.act("raw"))),
       );
   }

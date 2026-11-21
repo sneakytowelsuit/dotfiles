@@ -24,6 +24,8 @@ export const ACTIONS = [
   { id: "back", scope: "inbox", label: "Previous question", def: ["b"] },
   { id: "skip", scope: "inbox", label: "Skip this question", def: ["s"] },
   { id: "enter", scope: "inbox", label: "Confirm / continue / submit", def: ["enter"] },
+  { id: "snooze", scope: "inbox", label: "Snooze this agent", def: ["z"] },
+  { id: "recover", scope: "inbox", label: "Recover this agent (status, interrupt, restart)", def: ["x"] },
   { id: "close", scope: "inbox", label: "Close the inbox (or cancel a prompt)", def: ["escape", "q", "t"] },
 ];
 

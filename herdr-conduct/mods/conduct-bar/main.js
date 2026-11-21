@@ -58,6 +58,17 @@ export default class ConductBar extends View {
       .child(svg(`mods/conduct-bar/${icon}.svg`).size(15));
   }
 
+  // Snoozed agents: a passive outline, never filled or haloed. Click opens the inbox.
+  snoozedChip(t, n, compact) {
+    return div().flex_none().px(5).py(5).child(
+      own(h_flex()).id("c-snoozed").h(26).px(compact ? 8 : 10).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
+        .border_1().border_color(t.border).text_color(t.dim).hover((x) => x.bg(t.hover))
+        .tooltip(`${n} snoozed agent${n === 1 ? "" : "s"}. They come back when the snooze ends or their state changes.`)
+        .on_click(() => run("mod.open", { name: "conduct-triage" }))
+        .child(compact ? "⏱" : "SNOOZED").child(div().text_size(13).child(String(n))),
+    );
+  }
+
   // A status counter. Attention statuses with agents are filled and haloed; the rest are outlines.
   count(t, status, n, list, compact) {
     const color = colorOf(t, status);
@@ -90,8 +101,9 @@ export default class ConductBar extends View {
     const m = model();
     const list = m.list;
     const w = win() ?? {};
-    const by = (st) => list.filter((a) => a.status === st);
-    const wants = sorted(list).filter((a) => CRITICAL.includes(a.status));
+    const by = (st) => list.filter((a) => a.status === st && !a.snoozed);
+    const nSnoozed = list.filter((a) => a.snoozed).length;
+    const wants = sorted(list).filter((a) => CRITICAL.includes(a.status) && !a.snoozed);
     const shown = ORDER.filter((st) => by(st).length > 0 || ["blocked", "done", "working", "idle"].includes(st));
     const total = list.length;
     const ready = m.primaries.length > 0;
@@ -105,7 +117,7 @@ export default class ConductBar extends View {
       .tooltip(ready ? `Ask a primary agent to check on its sub-agents (${first("g.nudge")})` : "No primary agent yet: one that has started sub-agents")
       .on_click(() => this.nudge())
       .child("⚑ NUDGE");
-    const unreadList = sorted(list).filter((a) => CRITICAL.includes(a.status) && a.unseen);
+    const unreadList = sorted(list).filter((a) => CRITICAL.includes(a.status) && a.unseen && !a.snoozed);
     const unread = unreadList.length;
     const hot = unread ? colorOf(t, unreadList[0].status) : t.border;
     const inbox = own(h_flex())
@@ -156,7 +168,7 @@ export default class ConductBar extends View {
         div().absolute().top(0).bottom(0).left(0).right(0).pl(padL).pr(right).flex().items_center()
           .child(
             h_flex().id("c-counts").flex_1().min_w(0).items_center().overflow_x_scrollbar()
-              .child(h_flex().flex_none().mx_auto().items_center().gap(2).children(shown.map((st) => this.count(t, st, by(st).length, list, compact)))),
+              .child(h_flex().flex_none().mx_auto().items_center().gap(2).children([...shown.map((st) => this.count(t, st, by(st).length, list, compact)), ...(nSnoozed ? [this.snoozedChip(t, nSnoozed, compact)] : [])])),
           ),
       )
       .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).child(`${total} agent${total === 1 ? "" : "s"}`))
