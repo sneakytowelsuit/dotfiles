@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cellSize, filterGroups, gridRows, groupAgents, moveFocus } from "../../mods/conduct-map/grid.js";
+import { fitCells, filterGroups, gridRows, groupAgents, moveFocus } from "../../mods/conduct-map/grid.js";
 
 const agent = (address, status, { parent = null, primary = false } = {}) => ({
   address, title: address, status, parent, primary,
@@ -42,8 +42,6 @@ test("filters effective states, retains primary labels, and drops empty groups",
 });
 
 test("uses compact cells for larger fleets", () => {
-  for (const count of [0, 1, 24]) assert.equal(cellSize(count), 56);
-  for (const count of [25, 100]) assert.equal(cellSize(count), 22);
 });
 
 test("keyboard movement crosses group headers and clamps to shorter rows", () => {
@@ -64,3 +62,18 @@ test("keyboard movement crosses group headers and clamps to shorter rows", () =>
   ]) assert.equal(moveFocus(rows, from, direction).address, to);
   assert.equal(moveFocus([], null, "left"), undefined);
 });
+
+{
+  // few agents scale up to fill the space; many shrink to fit; too many scroll at the minimum size
+  const few = fitCells([3], 800, 500);
+  assert.ok(few.size >= 90, "few agents get big cells");
+  const some = fitCells([6, 6], 800, 400);
+  assert.ok(some.size > 56 && some.size <= 120);
+  const rowsNeeded = (groups, c) => groups.reduce((a, n) => a + Math.ceil(n / c), 0);
+  const many = fitCells([40, 40, 20], 800, 400);
+  assert.ok(many.size < 56 && many.size >= 22);
+  assert.ok(rowsNeeded([40, 40, 20], many.columns) * (many.size + 4) + 3 * 22 <= 400, "it fits the height");
+  const tight = fitCells([300], 200, 100); assert.ok(tight.size >= 22 && tight.size < 30); // cannot fit: smallest size, scrolls
+  assert.equal(fitCells([], 800, 400).columns, 1);
+  console.log("fitCells tests ok");
+}

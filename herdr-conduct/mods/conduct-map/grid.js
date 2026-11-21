@@ -59,3 +59,24 @@ export function moveFocus(rows, address, direction) {
   const next = cellRows[index + (direction === "up" ? -1 : 1)];
   return next ? next[Math.min(column, next.length - 1)] : row[column];
 }
+
+/**
+ * Scale the cells to the space: the largest square size whose grid fits the width and height (cells then fill the width
+ * exactly). If even the smallest size does not fit the height, use it and let the grid scroll.
+ * `groups`: number of agents in each group; W, H in the same unit as `gap`, `header` (the height of a group title).
+ */
+export function fitCells(groups, W, H, { min = 22, max = 120, gap = 4, header = 22 } = {}) {
+  const total = groups.reduce((a, b) => a + b, 0);
+  if (!total || W <= 0) return { size: Math.min(max, 56), columns: 1 };
+  let best = null;
+  let fallback = null;
+  for (let cols = 1; cols <= total; cols++) {
+    const size = Math.min(max, Math.floor((W - (cols - 1) * gap) / cols));
+    if (size < min) break;
+    const rows = groups.reduce((a, n) => a + Math.ceil(n / cols), 0);
+    const height = rows * (size + gap) + groups.length * header;
+    fallback = { size, columns: cols };
+    if (H > 0 && height <= H && (!best || size >= best.size)) best = { size, columns: cols };
+  }
+  return best ?? fallback ?? { size: min, columns: Math.max(1, Math.floor((W + gap) / (min + gap))) };
+}

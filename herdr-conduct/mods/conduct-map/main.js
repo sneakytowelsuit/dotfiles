@@ -4,17 +4,20 @@ import { closeOverlay, props, settings, theme } from "herdr";
 import { age, colorOf, go, ink, model, NAME, needs, ORDER } from "./attn.js";
 import { bindings, byId, pretty } from "./keys.js";
 import { stateIcon } from "./glyphs.js";
-import { cellSize, filterGroups, gridRows, groupAgents, moveFocus } from "./grid.js";
-import { MAP_ACTIONS } from "./map-keys.js";
+import { fitCells, filterGroups, gridRows, groupAgents, moveFocus } from "./grid.js";
+import { ACTIONS } from "./keys.js";
+
+const MAP_ACTIONS = ACTIONS.filter((a) => a.scope === "map");
 
 const GAP = 4;
-const bindingList = (action) => byId(action.id) ? bindings(action.id) : action.def;
+const bindingList = (action) => bindings(action.id);
 
 export default class ConductMap extends View {
   init(_p, cx) {
     this.filter = null;
     this.address = null;
     this.width = 0;
+    this.height = 0;
     this.focus = cx.focus_handle();
     this.scroll = ScrollHandle.new();
     this.cx = cx;
@@ -56,7 +59,7 @@ export default class ConductMap extends View {
     const elapsed = age(agent.since) || "time unknown";
     const place = `${agent.spaceName || agent.space || "Unknown space"} / ${agent.tabName || agent.tab || "Unknown tab"}`;
     const label = `${name} · ${agent.title} · ${state} · ${elapsed} · ${place}`;
-    const icon = stateIcon(t, agent.status, size === 22 ? 12 : 18)
+    const icon = stateIcon(t, agent.status, Math.max(10, Math.min(44, Math.round(size * 0.38))))
       .when(critical, (el) => el.text_color(ink(color)))
       .when(agent.status === "working", (el) => el.spin(1800));
 
@@ -70,7 +73,7 @@ export default class ConductMap extends View {
         .when(agent.status === "working", (el) => el.loop("opacity", { from: 0.45, to: 1, period: 2200 })))
       .when(focused, (el) => el.child(div().absolute().inset(0).rounded(4).border_2().border_color(t.accent)))
       .child(icon)
-      .when(size === 56, (el) => el.child(div().w_full().px(2).truncate().text_center().text_size(10)
+      .when(size >= 48, (el) => el.child(div().w_full().px(2).truncate().text_center().text_size(size >= 80 ? 12 : 10)
         .text_color(critical ? ink(color) : t.foreground).child(name)));
   }
 
@@ -94,11 +97,12 @@ export default class ConductMap extends View {
   render() {
     const t = theme();
     const { list } = model();
-    const size = cellSize(list.length);
     const zoom = Number(settings()?.zoom) || 1;
-    // Leave room for the body's right padding and native scrollbar.
-    const columns = Math.max(1, Math.floor((this.width / zoom - 20 + GAP) / (size + GAP)));
-    const rows = gridRows(filterGroups(groupAgents(list), this.filter), columns);
+    const groups = filterGroups(groupAgents(list), this.filter);
+    // Scale the cells to the dialog: the biggest that fit (measured pixels are window pixels, sizes are design pixels).
+    // Leave room for the right padding and the scrollbar.
+    const { size, columns } = fitCells(groups.map((g) => g.agents.length), this.width / zoom - 20, this.height / zoom - 4, { gap: GAP });
+    const rows = gridRows(groups, columns);
     const visible = rows.flatMap((row) => row.agents ?? []);
     const active = visible.find((a) => a.address === this.address) ?? visible[0];
     const hints = MAP_ACTIONS.map((a) => bindingList(a).map(pretty).join(" / "));
@@ -114,9 +118,10 @@ export default class ConductMap extends View {
       .child(h_flex().id("map-legend").w_full().min_w(0).h(36).flex_none().items_center().gap(4).overflow_x_scrollbar()
         .children(ORDER.map((status) => this.chip(t, status, list.filter((a) => a.status === status).length))))
       .child(v_flex().id("map-grid").w_full().flex_1().min_h(0).min_w(0).gap(GAP).pr(6)
-        .on_size_change(({ width }, cx) => {
-          if (Math.abs(width - this.width) > 0.5) {
+        .on_size_change(({ width, height }, cx) => {
+          if (Math.abs(width - this.width) > 0.5 || Math.abs(height - this.height) > 0.5) {
             this.width = width;
+            this.height = height;
             cx.notify();
           }
         })

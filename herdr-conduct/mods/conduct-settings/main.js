@@ -224,7 +224,8 @@ export default class ConductSettings extends View {
         .child(this.btn(t, "s-open-alerts", "Alert settings…", false, () => run("mod.open", { name: "conduct-alerts" }))))
       .child(div().pt(8).text_size(11).text_color(t.dim).child("Tiling window managers such as Aerospace or i3 often own alt-…; ctrl-alt-… or ctrl-shift-… usually stay free."))
       .children(group("global", "ANYWHERE IN THE LAYOUT", "Handled by Herdr: saved to keys.json and live at once."))
-      .children(group("inbox", "IN THE INBOX", "Plain keys, active while the inbox is open. The number keys always pick form options."));
+      .children(group("inbox", "IN THE INBOX", "Plain keys, active while the inbox is open. The number keys always pick form options."))
+      .children(group("map", "IN THE AGENT MAP", "Plain keys, active while the map is open. Arrow keys and vim motions (h j k l) by default."));
   }
 
   themesTab(t) {
