@@ -11,7 +11,7 @@ hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" 
 -- theme with no hyprcursor build, so hyprcursor is switched off below and Hyprland loads it by
 -- XCURSOR_THEME. (With no theme named at all it drew a bare fallback: no hand, text beam or grab.)
 hl.env("XCURSOR_THEME", "Bibata-Modern-Classic")
-hl.env("XCURSOR_SIZE", "32")
+hl.env("XCURSOR_SIZE", "10")
 
 hl.config({
 	cursor = {

@@ -148,10 +148,73 @@ lib.mkIf osConfig.programs.hyprland.enable {
           order = "random";
         };
       };
+      # Locking and screen-off are handled by hypridle + hyprlock below.
       idle.behavior = {
-        lock.enabled = true; # 10 minutes
-        screen-off.enabled = true; # 11 minutes
+        lock.enabled = false;
+        screen-off.enabled = false;
       };
+    };
+  };
+
+  # hyprlock: the lock screen. It authenticates through PAM (service
+  # "hyprlock", declared in modules/nixos/hyprland.nix), so it gets the same
+  # YubiKey -> password chain as login. Fingerprint is left to PAM too.
+  programs.hyprlock = {
+    enable = true;
+    settings = {
+      general.hide_cursor = true;
+      background = [
+        {
+          path = "screenshot";
+          blur_passes = 3;
+          blur_size = 6;
+        }
+      ];
+      input-field = [
+        {
+          size = "320, 56";
+          position = "0, -80";
+          halign = "center";
+          valign = "center";
+          fade_on_empty = false;
+          placeholder_text = "Touch key / enter password";
+          fail_text = "$PAMFAIL";
+        }
+      ];
+      label = [
+        {
+          text = "$TIME";
+          font_size = 72;
+          position = "0, 120";
+          halign = "center";
+          valign = "center";
+        }
+      ];
+    };
+  };
+
+  # hypridle: lock after 10 minutes, screens off after 11, and lock before
+  # suspend. `loginctl lock-session` (also what the lock keybind runs) goes
+  # through lock_cmd, so only one hyprlock ever runs.
+  services.hypridle = {
+    enable = true;
+    settings = {
+      general = {
+        lock_cmd = "pidof hyprlock || hyprlock";
+        before_sleep_cmd = "loginctl lock-session";
+        after_sleep_cmd = "hyprctl dispatch dpms on";
+      };
+      listener = [
+        {
+          timeout = 600;
+          on-timeout = "loginctl lock-session";
+        }
+        {
+          timeout = 660;
+          on-timeout = "hyprctl dispatch dpms off";
+          on-resume = "hyprctl dispatch dpms on";
+        }
+      ];
     };
   };
 
@@ -274,8 +337,8 @@ lib.mkIf osConfig.programs.hyprland.enable {
           key = "p";
           desc = "Power";
           submenu = [
-            (itemBind "l" "Lock" "Super+Alt+L" (shell "session lock"))
-            (item "s" "Suspend" (shell "session lock-and-suspend"))
+            (itemBind "l" "Lock" "Super+Alt+L" "loginctl lock-session")
+            (item "s" "Suspend" "sh -c 'loginctl lock-session && systemctl suspend'")
             (itemBind "d" "Displays off" "Super+Shift+P" (shell "dpms-off"))
             (item "o" "Log out" (shell "session logout"))
             (item "r" "Reboot" (shell "session reboot"))

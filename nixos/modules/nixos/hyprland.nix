@@ -23,6 +23,10 @@
   # and GDM's PAM unlocks the keyring at login.
   services.gnome.gnome-keyring.enable = true;
 
+  # PAM service for hyprlock. With security.pam.u2f enabled (yubikey.nix) it
+  # gets the YubiKey check automatically, then password.
+  security.pam.services.hyprlock = { };
+
   # File-open dialogs and other portals Hyprland's own portal doesn't cover.
   xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
 
