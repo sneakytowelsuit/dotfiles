@@ -19,6 +19,7 @@ const QUICK = { blocked: ["Yes, go ahead.", "No, don't do that.", "Continue.", "
 
 export default class ConductTriage extends View {
   init(_p, cx) {
+    this.cx = cx;
     this.cur = null;
     this.typing = false;
     this.review = false; // also show REVIEW (finished) items
@@ -181,11 +182,12 @@ export default class ConductTriage extends View {
       const on = pend && pend.q === form.question ? pend.set.has(o.n) : o.checked;
       const mark = form.multi
         ? div().flex_none().size(16).rounded(4).border_1().border_color(on ? color : t.input).when(on, (d) => d.bg(color)).flex().items_center().justify_center().text_size(11).text_color(ink(color)).child(on ? "✓" : "")
-        : div().flex_none().size(16).rounded_full().border_1().border_color(this.otherFor === o.n ? color : t.input).flex().items_center().justify_center().when(this.otherFor === o.n, (d) => d.child(div().size(8).rounded_full().bg(color)));
+        : div().flex_none().size(16).rounded_full().border_1().border_color(on ? color : t.input).flex().items_center().justify_center()
+            .when(on || this.otherFor === o.n, (d) => d.child(div().size(8).rounded_full().bg(color)));
       return h_flex().id(`c-o-${o.n}`).gap(10).items_start().px(10).py(8).rounded(8).cursor_pointer()
         .border_1().border_color(on || this.otherFor === o.n ? color : t.border).bg(on ? color + "22" : t.surface)
         .hover((x) => x.border_color(color))
-        .on_click(() => this.choose(n, form, o.n))
+        .on_click(this.on(() => this.choose(n, form, o.n)))
         .child(div().flex_none().h(16).flex().items_center().child(mark))
         .child(
           v_flex().flex_1().min_w(0).gap(2)
@@ -196,7 +198,7 @@ export default class ConductTriage extends View {
     };
     const btn = (id, label, primary, fn) => h_flex().id(id).h(30).px(14).items_center().rounded(8).cursor_pointer().text_size(12).font_semibold()
       .border_1().border_color(primary ? color : t.input).bg(primary ? color : t.raised).text_color(primary ? ink(color) : t.foreground)
-      .hover((x) => x.opacity(0.88)).on_click(fn).child(label);
+      .hover((x) => x.opacity(0.88)).on_click(this.on(fn)).child(label);
     const canBack = Boolean(form.tabs && form.tabs.some((x) => x.done)); // not on the first question
     return v_flex().flex_1().min_h(0).overflow_y_scrollbar().gap(8)
       .when(Boolean(form.tabs), (el) =>
@@ -228,8 +230,10 @@ export default class ConductTriage extends View {
             .child(btn("c-backr", "← Back", false, () => { press(n.address, "left"); this.look(n); }))));
   }
 
+  // A click handler that remembers the context it was given, so notify() repaints at once.
+  on(fn) { return (_e, cx) => { this.cx = cx; fn(); }; }
+
   render(cx) {
-    this.cx = cx;
     const t = theme();
     const { m, q } = this.queue();
     const n = this.now();
