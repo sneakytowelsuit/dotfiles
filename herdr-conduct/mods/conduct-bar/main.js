@@ -45,7 +45,7 @@ export default class ConductBar extends View {
   }
 
   nudge() {
-    openOverlay({ mod: "conduct-send", kind: "dialog", width: 600, props: { mode: "primary" } });
+    openOverlay({ mod: "conduct-send", kind: "dialog", width: 0.5, props: { mode: "primary" } });
   }
 
   button(t, id, icon, onClick, danger) {

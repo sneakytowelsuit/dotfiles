@@ -32,7 +32,8 @@ export default class ConductSend extends View {
     const m = model();
     const text = this.mode === "primary" && this.target ? nudgeText(m.nodes.get(this.target), m.nodes) : "";
     this.text = text;
-    this.input = this.mode === "primary" ? TextareaState.new({ value: text, rows: 12 }) : InputState.new({ value: text });
+    this.input = TextareaState.new({ value: text, rows: this.mode === "primary" ? 8 : 3 });
+    this.input.set_auto_grow(this.mode === "primary" ? 6 : 3, this.mode === "primary" ? 16 : 9);
     this.input.on("change", (_e, cx) => { this.text = this.input.value(); cx.notify(); });
     this.input.on("submit", () => this.go());
     this.input.on("focus", (_e, cx) => { this.focused = true; cx.notify(); });
@@ -109,8 +110,8 @@ export default class ConductSend extends View {
       )
       .when(Boolean(n), (el) =>
         el
-          .child(div().pt(4).text_size(11).text_color(t.dim).child(isPrimary ? "Message to send (Ctrl+Enter sends)" : "Or type your own"))
-          .child((isPrimary ? Textarea.new(this.input).h(250).py(8) : Input.new(this.input).h(36)).px(10).rounded(9).border_1().border_color(this.focused ? t.accent : t.input).bg(t.background).text_size(12.5).text_color(t.foreground))
+          .child(div().pt(4).text_size(11).text_color(t.dim).child(isPrimary ? "Message to send (Ctrl+Enter sends)" : "Or type your own (Ctrl+Enter sends, Enter adds a line)"))
+          .child(Textarea.new(this.input).py(8).px(10).rounded(9).border_1().border_color(this.focused ? t.accent : t.input).bg(t.background).text_size(12.5).text_color(t.foreground))
           .child(
             h_flex().pt(6).gap(8).justify_end()
               .child(this.btn(t, "c-cancel", "Cancel", false, () => closeOverlay(props().overlay)))

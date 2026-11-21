@@ -98,7 +98,7 @@ export default class ConductQueue extends View {
               ? this.button(t, `c-o-${a.address}`, "OPEN", color, () => go(a))
               : this.button(t, `c-s-${a.address}`, a.status === "blocked" ? "REPLY" : "NUDGE", color, () => {
                   if (a.status === "blocked" && a.kind === "question") { setShared("conduct.triage_focus", a.address); run("mod.open", { name: "conduct-triage" }); }
-                  else openOverlay({ mod: "conduct-send", kind: "dialog", width: 540, props: { mode: "agent", address: a.address } });
+                  else openOverlay({ mod: "conduct-send", kind: "dialog", width: 0.42, props: { mode: "agent", address: a.address } });
                 }),
           ),
       )
@@ -149,7 +149,7 @@ export default class ConductQueue extends View {
         .child(div().flex_none().size(7).rounded_full().bg(color))
         .child(
           this.button(t, `c-n-${p.address}`, "NUDGE", t.accent, () =>
-            openOverlay({ mod: "conduct-send", kind: "dialog", width: 600, props: { mode: "primary", address: p.address } })),
+            openOverlay({ mod: "conduct-send", kind: "dialog", width: 0.5, props: { mode: "primary", address: p.address } })),
         ),
       h_flex().mx(8).px(8).pt(5).pb(2).gap(4).flex_wrap().children(chips),
       ...quiet.map((k) => this.line(t, k, true)),

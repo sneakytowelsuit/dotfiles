@@ -10,7 +10,7 @@
 // "Read" is the same mark the sidebar's NEW tag uses.
 
 import { View, div } from "gpui-kit";
-import { v_flex, h_flex, InputState, Input } from "gpui-base";
+import { v_flex, h_flex, InputState, Input, TextareaState, Textarea } from "gpui-base";
 import { props, closeOverlay, openOverlay, hc, notify, theme, shared, setShared, settings } from "herdr";
 import { NAME, CRITICAL, colorOf, ink, sorted, model, markSeen, go, send, press, age, halo } from "./attn.js";
 import { parseForm, canType, keysFor } from "./form.js";
@@ -30,8 +30,8 @@ export default class ConductTriage extends View {
     this.notesInput = InputState.new({ value: "" });
     this.notesText = "";
     this.notesInput.on("change", (_e, cx) => { this.notesText = this.notesInput.value(); cx.notify(); });
-    this.notesInput.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
-    this.notesInput.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
+    this.notesInput.on("focus", (_e, cx) => { this.typing = true; this.typingNotes = true; cx.notify(); });
+    this.notesInput.on("blur", (_e, cx) => { this.typing = false; this.typingNotes = false; cx.notify(); });
     this.qi = new Map(); // address -> index of the question the terminal is on (tabs.length = the review step)
     this.qtext = new Map(); // "address|index" -> that question's text, to re-find our place
     this.leave = null; // { address, action }: asked to leave an unfinished form, waiting for a second press
@@ -50,7 +50,8 @@ export default class ConductTriage extends View {
 
   mkInput(cx) {
     this.text = "";
-    this.input = InputState.new({ value: "" });
+    this.input = TextareaState.new({ value: "", rows: 3, placeholder: "Reply… (Ctrl+Enter sends, Enter adds a line)" });
+    this.input.set_auto_grow(3, 9);
     this.input.on("change", (_e, cx) => { this.text = this.input.value(); cx.notify(); });
     this.input.on("submit", () => this.reply(this.text));
     this.input.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
@@ -259,7 +260,7 @@ export default class ConductTriage extends View {
       case "nudge": {
         const p = n?.parent;
         closeOverlay(props().overlay);
-        openOverlay({ mod: "conduct-send", kind: "dialog", width: 600, props: { mode: "primary", address: p ?? undefined } });
+        openOverlay({ mod: "conduct-send", kind: "dialog", width: 0.5, props: { mode: "primary", address: p ?? undefined } });
         return;
       }
       case "review": this.review = !this.review; cx.notify(); return;
@@ -346,6 +347,7 @@ export default class ConductTriage extends View {
     this.cx = cx;
     if (this.typing) {
       if (e.key === "escape") { this.handle.focus(); cx.stop_propagation(); }
+      else if (e.keystroke === "ctrl-enter" && !this.typingNotes) { this.reply(this.text); cx.stop_propagation(); }
       return;
     }
     const stop = () => cx.stop_propagation();
@@ -424,7 +426,7 @@ export default class ConductTriage extends View {
       const shown = seen[here] ?? (here === form.cursor ? form.preview : undefined);
       const mono = settings()?.font_family ?? "monospace";
       const nb = (l) => l.replace(/ /g, "\u00a0");
-      return v_flex().flex_1().min_h(0).overflow_y_scrollbar().gap(10)
+      return v_flex().gap(10)
         .when(Boolean(form.tabs), (el) => el.child(this.tabStrip(t, n, form, color)))
         .child(div().text_size(15).font_semibold().text_color(t.foreground).child(form.question || "(question)"))
         .child(
@@ -447,7 +449,7 @@ export default class ConductTriage extends View {
     const nextUp = this.queue().q.length > 1;
     const ticked = form.multi && (pend && pend.q === form.question ? pend.set.size > 0 : form.options.some((o) => o.checked));
     const canBack = Boolean(form.tabs && form.tabs.some((x) => x.done)); // not on the first question
-    return v_flex().flex_1().min_h(0).overflow_y_scrollbar().gap(8)
+    return v_flex().gap(8)
       .when(Boolean(form.tabs), (el) => el.child(this.tabStrip(t, n, form, color)))
       .when(form.step === "question", (el) =>
         el
@@ -519,6 +521,8 @@ export default class ConductTriage extends View {
           .child(div().text_size(10).text_color(this.review ? t.accent : t.dim).child(this.review ? "critical + review" : "critical only"))
           .child(div().text_size(11).text_color(t.dim).child("Esc")),
       )
+      .child(
+        v_flex().id("c-body").flex_1().min_h(0).overflow_y_scrollbar().gap(12).pr(4)
       .when(Boolean(this.flash && Date.now() < this.flash.until), (el) =>
         el.child(h_flex().gap(8).items_center().px(12).py(8).rounded(8).bg(colorOf(t, "done") + "22").border_1().border_color(colorOf(t, "done"))
           .child(div().text_size(12).font_semibold().text_color(t.foreground).child(`✓ ${this.flash.text}`))
@@ -530,7 +534,7 @@ export default class ConductTriage extends View {
           .child(h_flex().id("c-leave-stay").h(26).px(11).items_center().rounded(8).cursor_pointer().text_size(11).font_semibold().border_1().border_color(t.input).bg(t.raised).on_click(this.on(() => this.act("stay"))).child("Stay"))))
       .child(
         n
-          ? v_flex().gap(10).flex_1().min_h(0)
+          ? v_flex().gap(10)
               .child(
                 v_flex().gap(8).p(14).rounded(8).border_1().border_color(color).bg(color + "1f")
                   .child(
@@ -550,27 +554,33 @@ export default class ConductTriage extends View {
               )
               .child(
                 form ? this.formView(t, n, form, color) :
-                v_flex().flex_1().min_h(0).overflow_hidden().p(10).rounded(6).bg(t.background).border_1().border_color(t.border).justify_end()
+                v_flex().max_h(320).overflow_hidden().p(10).rounded(6).bg(t.background).border_1().border_color(t.border).justify_end()
                   .children(tail.length ? tail.map((l) => div().truncate().text_size(11).text_color(t.muted).child(l)) : [div().text_size(11).text_color(t.dim).child("(reading its screen…)")]),
               )
               .when(!form, (el) => el.child(
                 h_flex().gap(6).flex_wrap().children(quick.map((r, i) => this.hint(t, String(i + 1), r, () => this.reply(r)))),
               ))
               .child(
-                h_flex().gap(8).items_center()
-                  .child(div().flex_none().text_size(11).text_color(this.otherFor != null ? color : t.dim).child(this.otherFor != null ? "your answer" : "reply"))
+                h_flex().gap(8).items_end()
+                  .child(div().flex_none().pb(8).text_size(11).text_color(this.otherFor != null ? color : t.dim).child(this.otherFor != null ? "your answer" : "reply"))
                   .child(
-                    div().flex_1().child(
-                      Input.new(this.input).h(34).px(10).rounded(8).border_1()
+                    div().flex_1().min_w(0).child(
+                      Textarea.new(this.input).px(10).py(7).rounded(8).border_1()
                         .border_color(this.typing ? t.accent : t.input).bg(t.background).text_size(12).text_color(t.foreground),
                     ),
+                  )
+                  .child(
+                    h_flex().id("c-send").flex_none().h(32).px(13).items_center().rounded(8).cursor_pointer().text_size(12).font_semibold()
+                      .border_1().border_color(this.text.trim() ? color : t.input).bg(this.text.trim() ? color : t.raised).text_color(this.text.trim() ? ink(color) : t.dim)
+                      .on_click(this.on(() => this.reply(this.text))).child("Send"),
                   ),
               )
-          : v_flex().flex_1().items_center().justify_center().gap(6)
+          : v_flex().items_center().justify_center().gap(6).py(60)
               .child(div().text_size(18).font_semibold().child("Inbox zero"))
               .child(div().text_size(12).text_color(t.dim).child("Nothing critical is unread. It comes back here if a state changes."))
               .when(!this.review && m.list.some((x) => x.status === "done" && x.unseen), (el) =>
                 el.child(div().pt(8).text_size(12).font_semibold().text_color(colorOf(t, "done")).child(`${m.list.filter((x) => x.status === "done" && x.unseen).length} finished and unread: press d`))),
+      )
       )
       .child(
         h_flex().gap(14).flex_wrap().pt(4)
