@@ -21,16 +21,6 @@
       }
     },
     {
-      "id": "tabs",
-      "type": "block",
-      "size": {
-        "px": 34
-      },
-      "content": {
-        "mod": "conduct-tabs"
-      }
-    },
-    {
       "id": "body",
       "type": "row",
       "divider": {
@@ -51,34 +41,50 @@
           }
         },
         {
-          "id": "main",
-          "type": "block",
-          "padding": 6,
-          "content": {
-            "tab": "active",
-            "pane": {
-              "gap": 6,
-              "radius": 3,
-              "background": "background",
-              "border": {
-                "width": 1,
-                "color": "border"
+          "id": "work",
+          "type": "column",
+          "children": [
+            {
+              "id": "tabs",
+              "type": "block",
+              "size": {
+                "px": 34
               },
-              "focus": {
-                "width": 2,
-                "color": "accent"
-              },
-              "header": {
-                "content": {
-                  "mod": "conduct-pane"
-                },
-                "height": 30,
-                "position": "top",
-                "reveal": "always"
-              },
-              "lone": true
+              "content": {
+                "mod": "conduct-tabs"
+              }
+            },
+            {
+              "id": "main",
+              "type": "block",
+              "padding": 6,
+              "content": {
+                "tab": "active",
+                "pane": {
+                  "gap": 6,
+                  "radius": 3,
+                  "background": "background",
+                  "border": {
+                    "width": 1,
+                    "color": "border"
+                  },
+                  "focus": {
+                    "width": 2,
+                    "color": "accent"
+                  },
+                  "header": {
+                    "content": {
+                      "mod": "conduct-pane"
+                    },
+                    "height": 30,
+                    "position": "top",
+                    "reveal": "always"
+                  },
+                  "lone": true
+                }
+              }
             }
-          }
+          ]
         }
       ]
     }
