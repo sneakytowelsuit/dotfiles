@@ -74,7 +74,7 @@ export function model() {
       kind: x.report?.kind ?? x.status?.kind ?? null,
       title: x.title || a?.title || x.name || x.program?.name || x.address,
       name: x.name ?? null,
-      app: x.report?.app ?? a?.app ?? null,
+      app: x.report?.app ?? x.status?.app ?? a?.app ?? null,
       appName: x.program?.name ?? a?.program?.name ?? "agent",
       focused: Boolean(a?.focused),
       _p: x.parent, _l: x.labels ?? {},

@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 # Mods can't import across folders: attn.js lives in conduct-bar/ and is copied to the others.
 cd "$(dirname "$0")/mods" || exit 1
 for m in conduct-queue conduct-pane conduct-menu conduct-send conduct-triage conduct-settings conduct-tabs conduct-feed conduct-alerts conduct-snooze conduct-recover conduct-usage conduct-map conduct-batch conduct-jump; do mkdir -p "$m"; cp conduct-bar/attn.js "$m/"; done
@@ -19,4 +20,8 @@ for m in conduct-map conduct-bar conduct-queue conduct-pane conduct-tabs conduct
 for d in */; do [ "$d" != "conduct-bar/" ] && [ -f "$d/attn.js" ] && cp conduct-bar/recent.js "$d"; done
 cp conduct-triage/form.js conduct-batch/
 for m in conduct-settings conduct-queue conduct-tabs conduct-triage; do cp conduct-density/density.js "$m/"; done
+# Harness adapters are plain sibling modules because Herdr isolates mod imports by folder.
+for m in conduct-glyphs conduct-map conduct-bar conduct-queue conduct-pane conduct-tabs conduct-triage conduct-batch conduct-usage conduct-recover; do
+  cp conduct-harnesses/harnesses.js conduct-harnesses/prompts.js conduct-harnesses/session.js "$m/" || exit 1
+done
 echo "shared modules synced"

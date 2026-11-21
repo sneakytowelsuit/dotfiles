@@ -13,9 +13,16 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, TextareaState, Textarea } from "gpui-base";
 import { props, closeOverlay, openOverlay, hc, notify, theme, shared, setShared, settings } from "herdr";
 import { NAME, CRITICAL, colorOf, ink, sorted, model, markSeen, go, send, press, age, halo, noteAnswered } from "./attn.js";
-import { parseForm, canType, keysFor } from "./form.js";
+import { canType, keysFor } from "./form.js";
+import { lookupHarness } from "./harnesses.js";
 import { stateIcon } from "./glyphs.js";
 import { inboxAction, show } from "./keys.js";
+
+const unknownPrompt = { classify: () => ({ kind: "unknown" }) };
+const promptFor = (agent) => lookupHarness(agent?.app)?.prompt ?? unknownPrompt;
+const sameAgent = (before, after) => before && after &&
+  before.app === after.app && before.status === after.status &&
+  before.kind === after.kind && before.since === after.since;
 
 const QUICK = { done: ["Thanks, looks good.", "Please continue.", "Summarize what you did in two lines."], blocked: ["Yes, go ahead.", "No, don't do that.", "Continue.", "Skip that and move on."], default: ["What's your status? One line.", "You seem stuck. Say what's blocking you, or continue.", "Continue."] };
 
@@ -26,6 +33,8 @@ export default class ConductTriage extends View {
     this.typing = false;
     this.finishedView = false; // d: the quiet list of finished agents instead of the inbox
     this.tails = new Map(); // address -> last lines of its screen
+    this.sendingChoice = new Set();
+    this.promptKinds = new Map();
     this.forms = new Map(); // address -> the question form on its screen, if it shows one
     this.prev = new Map(); // "address|question" -> { option number: preview text }, for preview layouts
     this.peeked = new Set(); // "address|question" already walked through
@@ -38,7 +47,7 @@ export default class ConductTriage extends View {
     this.qtext = new Map(); // "address|index" -> that question's text, to re-find our place
     this.leave = null; // { address, action }: asked to leave an unfinished form, waiting for a second press
     this.flash = null; // { text, next, until }: what just went out, shown on the next card
-    this.stage = new Map(); // address -> { q, n }: a single-select pick not yet sent (click it again to clear)
+    this.stage = new Map(); // address -> staged selection and the form shown when it was picked
     this.opt = new Map(); // address -> { q, set, ts }: what was just clicked, shown at once until the screen confirms
     this.raw = false; // v: show the screen instead of the form
     this.otherFor = null; // the "Type something" option the reply line is answering
@@ -93,7 +102,13 @@ export default class ConductTriage extends View {
       if (r.code !== 0) return;
       const lines = r.stdout.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
       this.tails.set(address, lines.slice(-12));
-      const form = parseForm(r.stdout, model().nodes.get(address)?.app);
+      const node = model().nodes.get(address);
+      const adapter = promptFor(node);
+      const { kind, form = null } = adapter.classify(r.stdout, node);
+      this.promptKinds.set(address, kind);
+      const staged = this.stage.get(address);
+      if (staged?.approval && (staged.since !== node?.since ||
+          !form?.approval || !adapter.choiceKeys(r.stdout, staged.form, staged.n))) this.stage.delete(address);
       this.forms.set(address, form);
       if (form?.tabs) {
         const M = form.tabs.length;
@@ -124,17 +139,28 @@ export default class ConductTriage extends View {
   // A preview layout only draws the highlighted option's preview, so move through the others once to read theirs,
   // then put the highlight back.
   async peek(address, form, key) {
-    const home = form.cursor;
-    for (const o of form.options) {
-      if (o.n === home || this.prev.get(key)?.[o.n] !== undefined) continue;
-      await press(address, String(o.n));
-      await this.wait(170);
+    const agent = model().nodes.get(address);
+    for (const number of [...form.options.map((o) => o.n).filter((n) => n !== form.cursor), form.cursor]) {
       const r = await hc(["read", address]);
-      const f = r.code === 0 ? parseForm(r.stdout, model().nodes.get(address)?.app) : null;
-      if (f?.preview != null && f.cursor != null) { const seen = this.prev.get(key) ?? {}; seen[f.cursor] = f.preview; this.prev.set(key, seen); this.cx.notify(); }
+      const current = model().nodes.get(address);
+      if (r.code !== 0 || !sameAgent(agent, current)) return;
+      const adapter = promptFor(current);
+      const live = adapter.classify(r.stdout, current).form;
+      const keys = live && adapter.choiceKeys(r.stdout, form, number);
+      if (!keys) return;
+      const seen = this.prev.get(key) ?? {};
+      seen[live.cursor] = live.preview;
+      this.prev.set(key, seen);
+      if (number !== form.cursor && seen[number] !== undefined) continue;
+      await press(address, ...keys);
+      await this.wait(170);
     }
-    await press(address, String(home));
     this.look({ address });
+  }
+
+  async formAction(n, form, action, value) {
+    const keys = promptFor(n).actionKeys?.(form, action, value);
+    if (keys?.length) await press(n.address, ...keys);
   }
 
   // Type into the terminal: as key presses when every character has a key (clean text), else pasted with `hc send`,
@@ -163,7 +189,14 @@ export default class ConductTriage extends View {
     const n = this.now();
     if (!n || !text.trim()) return;
     const { q } = this.queue();
-    if (this.otherFor != null) { await this.answerOther(n, q, text.trim()); return; }
+    if (this.otherFor != null) { await this.answerOther(n, text.trim()); return; }
+    if (this.promptKinds.get(n.address) !== "text") return;
+    const r = await hc(["read", n.address]).catch(() => null);
+    const current = model().nodes.get(n.address);
+    if (r?.code !== 0 || !sameAgent(n, current) || promptFor(current).classify(r.stdout, current).kind !== "text") {
+      this.look(n);
+      return;
+    }
     const ok = await send(n.address, text.trim());
     notify({ title: ok ? `Sent to ${n.title}` : `Couldn't send to ${n.title}`, body: text.trim().slice(0, 100), level: ok ? "success" : "error", timeout: 2500 });
     if (ok) this.step(n, q, true, this.cx);
@@ -171,58 +204,86 @@ export default class ConductTriage extends View {
 
   // The typed answer for a "Type something" row. Single select: type it and Enter. Multi select: typing ticks the
   // row on its own, so type, then move off the row (Enter would untick it).
-  async answerOther(n, q, text) {
+  async answerOther(n, text) {
     const form = this.forms.get(n.address);
-    const multi = Boolean(form?.multi);
+    const r = await hc(["read", n.address]).catch(() => null);
+    const current = model().nodes.get(n.address);
+    const live = r?.code === 0 && sameAgent(n, current) && promptFor(current).classify(r.stdout, current).form;
+    if (!live || (!live.inserting && live.cursor !== this.otherFor) ||
+        !form || !promptFor(current).choiceKeys(r.stdout, form, this.otherFor)) return;
+    const multi = form.multi;
     this.otherFor = null;
     this.input.set_value("");
     this.text = "";
     this.handle.focus();
     if (await this.typeText(n.address, text)) {
-      await press(n.address, multi ? "up" : "enter");
+      await this.formAction(n, form, "finishOther");
     } else {
       await send(n.address, text); // pasted: it also pressed Enter
-      if (multi) { await press(n.address, "enter"); await press(n.address, "up"); } // Enter unticked it; tick it again
+      await this.formAction(n, form, "finishPastedOther");
     }
     if (!multi) { if (form?.tabs) { this.bump(n, form, +1); this.cx.notify(); } else this.finishAgent(n, "1 answer"); }
     this.look(n);
   }
 
   // Preview layout: the highlighted option is the answer. Notes go in first (n, text, Esc), then Enter.
-  async selectPreview(n, form, q) {
+  async selectPreview(n, form) {
+    const r = await hc(["read", n.address]).catch(() => null);
+    const current = model().nodes.get(n.address);
+    const adapter = promptFor(current);
+    const live = r?.code === 0 && sameAgent(n, current) && adapter.classify(r.stdout, current).form;
+    const pending = this.opt.get(n.address);
+    const selected = pending?.q === form.question ? [...pending.set][0] : form.cursor;
+    if (!live || live.cursor !== selected || !adapter.choiceKeys(r.stdout, form, selected)) {
+      this.look(n);
+      return;
+    }
     const note = this.notesText.trim();
     if (note) {
-      await press(n.address, "n");
+      await this.formAction(n, form, "openNotes");
       const typed = await this.typeText(n.address, note);
-      await press(n.address, "esc");
+      await this.formAction(n, form, "closeNotes");
       if (!typed) notify({ title: "Notes not sent", body: "Claude's notes box can't take some of those characters.", level: "warning", timeout: 4000 });
     }
-    await press(n.address, "enter");
+    await this.formAction(n, form, "submitPreview");
     this.notesInput.set_value("");
     this.notesText = "";
     if (form.tabs) { this.bump(n, form, +1); this.cx.notify(); } else this.finishAgent(n, "1 answer");
     this.look(n);
   }
 
-  // Answer the form the way the terminal would: a digit. Then look again.
-  choose(n, form, num) {
+  async choose(n, form, num) {
     const opt = form.options.find((o) => o.n === num);
-    if (!opt) return;
+    if (!opt || this.sendingChoice.has(n.address)) return;
+    const address = n.address;
+    this.sendingChoice.add(address);
+    try {
+      const { code, stdout } = await hc(["read", address]);
+      const current = model().nodes.get(address);
+      const adapter = promptFor(current);
+      const live = code === 0 && sameAgent(n, current) && adapter.classify(stdout, current).form;
+      const keys = live && adapter.choiceKeys(stdout, form, num);
+      if (!keys) throw new Error("The prompt changed. Review the current screen.");
+      if (keys.length && (await press(address, ...keys)).code !== 0) throw new Error("Herdr could not send the choice.");
+    } catch (e) {
+      notify({ title: "Choice not sent", body: e.message, level: "warning", timeout: 4000 });
+      return;
+    } finally {
+      this.sendingChoice.delete(address);
+      this.look(n);
+    }
+    if (form.approval) { this.finishAgent(n, "1 choice"); return; }
     if (form.step === "question" && opt.other) {
       // Land on the "Type something" row (it opens for typing there), then take the answer from the reply line.
       this.otherFor = num;
-      if (form.multi) { const d = num - (form.cursor ?? 1); for (let i = 0; i < Math.abs(d); i++) press(n.address, d > 0 ? "down" : "up"); }
-      else press(n.address, String(num));
-      this.input.focus();
       this.cx.notify();
+      this.cx.timer.after(0, () => { if (this.now()?.address === address && this.otherFor === num) this.input.focus(); });
       return;
     }
     if (form.preview != null) {
       // A digit only highlights here; Enter (or Choose) picks.
       this.opt.set(n.address, { q: form.question, set: new Set([num]), ts: Date.now() });
-      press(n.address, String(num));
       this.cx.notify();
-      this.look(n);
       return;
     }
     if (form.step === "question") {
@@ -234,11 +295,9 @@ export default class ConductTriage extends View {
       this.opt.set(n.address, { q: form.question, set: base, ts: Date.now() });
       this.cx.notify();
     }
-    press(n.address, String(num));
     if (form.step === "review") { if (num === 1) this.finishAgent(n, `${form.answers.length} answer${form.answers.length === 1 ? "" : "s"}`); }
     else if (form.tabs && !form.multi) this.bump(n, form, +1); // answering moves the terminal to the next question
-    else if (!form.tabs && !form.multi && form.preview == null) this.finishAgent(n, "1 answer");
-    this.look(n);
+    else if (!form.tabs && !form.multi) this.finishAgent(n, "1 answer");
   }
 
   look(n) {
@@ -247,7 +306,7 @@ export default class ConductTriage extends View {
 
   advance(n, form) {
     if (form.step === "review") this.choose(n, form, 1);
-    else if (form.multi) { if (form.inserting) press(n.address, "up"); press(n.address, "right"); this.bump(n, form, +1); this.look(n); this.cx.notify(); }
+    else if (form.multi) { this.formAction(n, form, "advance"); this.bump(n, form, +1); this.look(n); this.cx.notify(); }
   }
 
   // Everything a hotkey does, by name, so the hint chips can run the same thing on a click.
@@ -266,7 +325,10 @@ export default class ConductTriage extends View {
         return;
       }
       case "stay": this.leave = null; cx.notify(); return;
-      case "reply": if (form?.preview != null) this.notesInput.focus(); else if (n) this.input.focus(); return;
+      case "reply":
+        if (form?.preview != null) this.notesInput.focus();
+        else if (n && (this.otherFor != null || this.promptKinds.get(n.address) === "text")) this.input.focus();
+        return;
       case "go": if (n) { closeOverlay(props().overlay); go(n); } return;
       case "nudge": {
         const p = n?.parent;
@@ -278,16 +340,17 @@ export default class ConductTriage extends View {
       case "readall": for (const f of this.finishedList()) markSeen(f); cx.notify(); return;
       case "raw": this.raw = !this.raw; cx.notify(); return;
       case "back": if (n) this.back(n, form); return;
-      case "skip": if (n && form?.tabs) { this.stage.delete(n.address); press(n.address, "right"); this.bump(n, form, +1); this.look(n); cx.notify(); } return;
-      case "dismiss": if (n) { press(n.address, "esc"); this.look(n); } return;
+      case "skip": if (n && form?.tabs) { this.stage.delete(n.address); this.formAction(n, form, "skip"); this.bump(n, form, +1); this.look(n); cx.notify(); } return;
+      case "dismiss": if (n && form && !form.approval) { this.formAction(n, form, "dismiss"); this.look(n); } return;
       case "snooze": if (n) { closeOverlay(props().overlay); openOverlay({ mod: "conduct-snooze", kind: "dialog", width: 0.3, props: { address: n.address } }); } return;
       case "recover": if (n) { closeOverlay(props().overlay); openOverlay({ mod: "conduct-recover", kind: "dialog", width: 0.45, height: 0.8, props: { address: n.address } }); } return;
       case "close": if (this.leave) { this.leave = null; cx.notify(); } else closeOverlay(props().overlay); return;
       case "enter":
-        if (form?.preview != null) this.selectPreview(n, form, q);
+        if (form?.approval && this.raw) return;
+        if (form?.preview != null) this.selectPreview(n, form);
         else if (form?.step === "review" || form?.multi) this.advance(n, form);
         else if (form) this.confirm(n, form);
-        else if (n) this.input.focus();
+        else if (n && this.promptKinds.get(n.address) === "text") this.input.focus();
         return;
     }
   }
@@ -296,13 +359,13 @@ export default class ConductTriage extends View {
   pick(n, form, num) {
     const cur = this.stage.get(n.address);
     if (cur && cur.q === form.question && cur.n === num) this.stage.delete(n.address);
-    else this.stage.set(n.address, { q: form.question, n: num });
+    else this.stage.set(n.address, { q: form.question, n: num, form, approval: form.approval, since: n.since });
     this.cx.notify();
   }
 
   confirm(n, form) {
     const st = this.stage.get(n.address);
-    if (st && st.q === form.question) { this.stage.delete(n.address); this.choose(n, form, st.n); }
+    if (st && st.q === form.question && (!form.approval || st.since === n.since)) { this.stage.delete(n.address); this.choose(n, st.form, st.n); }
     else if (form.tabs) this.act("skip");
   }
 
@@ -313,7 +376,7 @@ export default class ConductTriage extends View {
 
   back(n, form) {
     if (!form?.tabs) return;
-    press(n.address, "left");
+    this.formAction(n, form, "back");
     this.bump(n, form, -1);
     this.look(n);
     this.cx.notify();
@@ -321,12 +384,7 @@ export default class ConductTriage extends View {
 
   // Go to question k (or the review step, k = tabs.length): to the first tab, then right k times.
   jump(n, form, k) {
-    const M = form.tabs.length;
-    const keys = [];
-    if (form.inserting) keys.push("up");
-    for (let i = 0; i < M; i++) keys.push("left");
-    for (let i = 0; i < k; i++) keys.push("right");
-    press(n.address, ...keys);
+    this.formAction(n, form, "jump", k);
     this.qi.set(n.address, k);
     this.stage.delete(n.address);
     this.look(n);
@@ -351,7 +409,7 @@ export default class ConductTriage extends View {
     if (form.multi) {
       const pend = this.opt.get(n.address);
       const on = pend && pend.q === form.question ? [...pend.set] : form.options.filter((o) => o.checked).map((o) => o.n);
-      for (const num of on) press(n.address, String(num));
+      this.formAction(n, form, "reset", on);
       this.opt.set(n.address, { q: form.question, set: new Set(), ts: Date.now() });
       this.look(n);
     }
@@ -375,6 +433,10 @@ export default class ConductTriage extends View {
     if (/^[1-9]$/.test(e.key)) {
       const n = this.now();
       const form = n && !this.raw && this.forms.get(n.address);
+      if (form?.approval) {
+        if (form.options.some((o) => o.n === Number(e.key))) this.pick(n, form, Number(e.key));
+        return stop();
+      }
       if (form) { this.stage.delete(n.address); this.choose(n, form, Number(e.key)); return stop(); }
       if (Number(e.key) > 4) return stop();
       const r = n && (QUICK[n.status] ?? QUICK.default)[Number(e.key) - 1];
@@ -413,7 +475,7 @@ export default class ConductTriage extends View {
   formView(t, n, form, color) {
     const pend = this.opt.get(n.address);
     const st = this.stage.get(n.address);
-    const staged = st && st.q === form.question ? st.n : null; // a single-select pick not sent yet
+    const staged = st && st.q === form.question && (!form.approval || st.since === n.since) ? st.n : null; // a single-select pick not sent yet
     const opt = (o) => {
       // In a preview layout the highlighted row is the choice; a staged pick beats what Claude reports; else what it ticked.
       const on = form.preview != null
@@ -461,7 +523,7 @@ export default class ConductTriage extends View {
                 .child(div().text_size(10).font_semibold().text_color(t.dim).child("NOTES (OPTIONAL, i TO TYPE)"))
                 .child(Input.new(this.notesInput).h(32).px(10).rounded(8).border_1().border_color(this.typing ? color : t.input).bg(t.background).text_size(12).text_color(t.foreground))
                 .when(this.notesText && !canType(this.notesText), (d) => d.child(div().text_size(10).text_color(t.dim).child("Some characters can't be typed into Claude's notes box and will be left out.")))
-                .child(h_flex().gap(8).pt(2).child(btn("c-choose", "Choose this", true, () => this.selectPreview(n, form, this.queue().q)))),
+                .child(h_flex().gap(8).pt(2).child(btn("c-choose", "Choose this", true, () => this.selectPreview(n, form)))),
             ),
         );
     }
@@ -482,7 +544,7 @@ export default class ConductTriage extends View {
           .child(
             h_flex().gap(8).pt(2).flex_wrap()
               .when(form.multi, (r) => r.child(btn("c-cont", ticked ? "Continue" : "Skip →", true, () => this.advance(n, form))))
-              .when(!form.multi, (r) => r.child(staged != null
+              .when(!form.multi && (!form.approval || staged != null), (r) => r.child(staged != null
                 ? btn("c-confirm", "Confirm", true, () => this.confirm(n, form))
                 : form.tabs ? btn("c-skip", "Skip this question →", true, () => this.act("skip")) : btn("c-dismiss", "Dismiss question", false, () => this.act("dismiss"))))
               .when(staged != null || (form.multi && ticked), (r) => r.child(btn("c-reset", "Reset", false, () => this.reset(n, form))))
@@ -562,7 +624,8 @@ export default class ConductTriage extends View {
     const color = n ? colorOf(t, n.status) : t.accent;
     const idx = n ? q.findIndex((x) => x.address === n.address) : 0;
     const parent = n?.parent ? m.nodes.get(n.parent) : null;
-    const quick = n ? QUICK[n.status] ?? QUICK.default : [];
+    const textPrompt = n && this.promptKinds.get(n.address) === "text";
+    const quick = textPrompt ? QUICK[n.status] ?? QUICK.default : [];
     const tail = n ? this.tails.get(n.address) ?? [] : [];
     const form = n && !this.raw ? this.forms.get(n.address) : null;
     const fin = this.finishedList();
@@ -641,7 +704,7 @@ export default class ConductTriage extends View {
               .when(!form, (el) => el.child(
                 h_flex().gap(6).flex_wrap().children(quick.map((r, i) => this.hint(t, String(i + 1), r, () => this.reply(r)))),
               ))
-              .child(
+              .when(textPrompt || (Boolean(form) && this.otherFor != null), (el) => el.child(
                 h_flex().gap(8).items_end()
                   .child(div().flex_none().pb(8).text_size(11).text_color(this.otherFor != null ? color : t.dim).child(this.otherFor != null ? "your answer" : "reply"))
                   .child(
@@ -655,7 +718,7 @@ export default class ConductTriage extends View {
                       .border_1().border_color(this.text.trim() ? color : t.input).bg(this.text.trim() ? color : t.raised).text_color(this.text.trim() ? ink(color) : t.dim)
                       .on_click(this.on(() => this.reply(this.text))).child("Send"),
                   ),
-              )
+              ))
           : v_flex().items_center().justify_center().gap(6).py(60)
               .child(div().text_size(18).font_semibold().child("Inbox zero"))
               .child(div().text_size(12).text_color(t.dim).child("Nothing critical is unread. It comes back here if a state changes."))

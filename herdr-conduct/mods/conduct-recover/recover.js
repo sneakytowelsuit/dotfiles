@@ -1,17 +1,29 @@
 // Recovery: pure logic (no herdr imports; node-tested).
 
+import { HARNESS_REGISTRY, lookupHarness } from "./harnesses.js";
+
 const base = (p) => String(p ?? "").split("/").pop();
 const SHELLS = new Set(["sh", "bash", "zsh", "fish", "dash", "nu", "ksh"]);
 export const isShell = (argv) => SHELLS.has(base(argv?.[0]).replace(/^-/, ""));
 
-/** Is this a Claude Code argv? (the wrapper is sometimes `.claude-wrapped`) */
-export const isClaude = (argv) => /^\.?claude(-code)?(-wrapped)?$/.test(base(argv?.[0]));
-const RESUME = new Set(["--continue", "-c", "--resume", "-r", "--from-pr", "--session-id"]);
-export const hasResume = (argv) => (argv ?? []).some((a) => RESUME.has(a) || a.startsWith("--resume=") || a.startsWith("--session-id="));
-/** Can "restart and resume" be offered? */
-export const canResume = (argv) => isClaude(argv) && !hasResume(argv);
-/** The argv with --continue right after the program (never after a prompt or `--`). */
-export const withContinue = (argv) => (canResume(argv) ? [argv[0], "--continue", ...argv.slice(1)] : [...argv]);
+/** Is this a Claude Code argv? */
+export const isClaude = (argv) => lookupHarness("claude-code").recovery.matches(argv);
+export { hasResume } from "./session.js";
+
+export function resumeArgs(argv, app) {
+  const recovery = app == null
+    ? Object.values(HARNESS_REGISTRY).find((entry) => entry.recovery?.matches(argv))?.recovery
+    : lookupHarness(app)?.recovery;
+  return recovery?.resumeArgs(argv) ?? null;
+}
+
+export const canResume = (argv, app) => resumeArgs(argv, app) !== null;
+
+/** Insert the harness's resume arguments before the original arguments. */
+export function withContinue(argv, app) {
+  const args = resumeArgs(argv, app);
+  return args ? [argv[0], ...args, ...argv.slice(1)] : [...argv];
+}
 
 /**
  * What to start again, from `hc get <t> --json`. Agents started from a shell have the shell as `argv` and the real

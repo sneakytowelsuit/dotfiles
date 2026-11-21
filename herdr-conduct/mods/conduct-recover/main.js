@@ -6,7 +6,7 @@ import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { props, closeOverlay, theme, shared, setShared } from "herdr";
 import { NAME, SAYS, colorOf, ink, model, age } from "./attn.js";
-import { canResume, normConfig } from "./recover.js";
+import { resumeArgs, normConfig } from "./recover.js";
 import { useClock, readTail, statusCheck, interruptThenCheck, restart, kill, planRestart } from "./recover-actions.js";
 
 export default class ConductRecover extends View {
@@ -101,7 +101,7 @@ export default class ConductRecover extends View {
     const cfg = normConfig(shared("conduct.recover")).autoNudge;
     const a = this.address;
     const spec = this.plan?.spec;
-    const resume = spec ? canResume(spec.argv) : false;
+    const resume = resumeArgs(spec?.argv, n?.app);
     const lossy = "It starts a NEW terminal: the old conversation and everything in its context are LOST unless the program resumes by itself.";
     return v_flex().id("c-recover").track_focus(this.handle).on_key_down((e, cx) => this.key(e, cx))
       .w_full().h_full().p(18).gap(10).bg(t.popover).text_color(t.foreground)
@@ -125,8 +125,8 @@ export default class ConductRecover extends View {
           .child(this.action(t, "interrupt", "Interrupt, then ask", "Presses its stop key (like Esc), waits a moment, then asks for a status. For one that is hung on a command.", "Interrupt", () => interruptThenCheck(a)))
           .child(this.action(t, "restart", "Restart", `Ends it and starts the same command again with the same name, folder and parent${spec ? ` (${spec.argv.join(" ").slice(0, 60)})` : ""}. ${lossy}`, "Restart…", () => restart(a, false),
             { danger: true, warn: lossy + " Press the button again to restart." }))
-          .when(resume, (el) => el.child(this.action(t, "resume", "Restart and resume", "Same as Restart, but starts Claude Code with --continue so it picks up the latest conversation in that folder (it may pick a different session if several ran there).", "Restart + resume…", () => restart(a, true),
-            { danger: true, warn: "Ends it now and continues the most recent Claude conversation in its folder. Press again to do it." })))
+          .when(Boolean(resume), (el) => el.child(this.action(t, "resume", "Restart and resume", `Starts the agent with ${resume?.join(" ")} to continue the latest conversation in that folder. If several sessions ran there, it may pick a different one.`, "Restart + resume…", () => restart(a, true, n?.app),
+            { danger: true, warn: "Ends the current terminal and tries to resume the latest conversation in its folder. Press again to confirm." })))
           .child(this.action(t, "kill", "End it", "Ends its program for good. Nothing is started again.", "End it…", () => kill(a), { danger: true, warn: "This ends the agent and its work in progress." })))
         .when(Boolean(this.result), (el) => el.child(v_flex().p(9).rounded(8).border_1().border_color(this.result.ok ? t.done : t.blocked)
           .child(div().text_size(10).font_semibold().text_color(this.result.ok ? t.done : t.blocked).child(this.result.ok ? "DONE" : "DID NOT WORK"))

@@ -9,8 +9,11 @@ const name = (a) => a.name || a.title;
 const label = (a) => `${name(a)} · ${a.spaceName || "No space"}`;
 
 async function readPrompt(agent) {
-  const result = await hc(["read", agent.address, "--lines", "30"]);
-  return result.code === 0 ? inspectPrompt(agent, result.stdout) : null;
+  const result = await hc(["read", agent.address]);
+  const current = model().nodes.get(agent.address);
+  return result.code === 0 && current?.status === "blocked" &&
+    current.since === agent.since && current.app === agent.app
+    ? inspectPrompt(current, result.stdout) : null;
 }
 
 function button(t, id, label, action, active = false) {
@@ -74,9 +77,9 @@ export default class ConductBatch extends View {
         let status = "Failed";
         try {
           const agent = model().nodes.get(target.address);
-          const prompt = agent?.status === "blocked" && agent.since === target.since
+          const prompt = agent?.status === "blocked" && agent.since === target.since && agent.app === target.app
             ? await readPrompt(agent) : null;
-          if (prompt?.message !== this.prompts.get(target.address).message ||
+          if (prompt?.kind !== "text" || prompt.message !== this.prompts.get(target.address).message ||
               (prompt?.permission && !card.permission)) status = "Failed · prompt changed";
           // send() records noteAnswered() after a successful delivery.
           else if (await send(target.address, text)) status = "Sent";

@@ -162,12 +162,34 @@ test("burn rate over the last 10 minutes", () => {
   assert.equal(idle.rate.costPerHour, 0);
 });
 
+test("Codex usage uses the reported window and counts cached input once", () => {
+  const sample = { t: new Date(T0).toISOString(), window: 475000, cumulative: 22500, input: 20000, cached: 15000, output: 100 };
+  const lines = [
+    "truncated first line",
+    JSON.stringify({ model: "gpt-6.2-sol" }),
+    JSON.stringify({ ...sample, cumulative: 12000, input: 10000, cached: 5000 }),
+    JSON.stringify(sample),
+    JSON.stringify(sample),
+  ];
+  const u = U.codexMetrics(lines, T0 + 1000);
+  assert.equal(u.model, "gpt-6.2-sol");
+  assert.equal(u.ctx.used, 20000);
+  assert.equal(u.ctx.total, 475000);
+  assert.deepEqual(u.cache.seq, [0.5, 0.75]);
+  assert.equal(u.cache.last, 0.75);
+  assert.equal(U.cacheTimer(u.cache, T0), null);
+  assert.equal(u.cost, null);
+  assert.equal(u.rate.costPerHour, null);
+  assert.equal(U.fleet({ codex: u }).priced, 0);
+  assert.equal(U.codexMetrics(lines.slice(0, 2), T0), null);
+});
+
 test("fleet totals", () => {
   const mk = (frac, lastAt, ratio, cost) => ({ ctx: { used: 100, frac }, cache: { ratio, ttl: 300, lastAt }, cost: { session: cost, savings: 1 }, rate: { costPerHour: 2 } });
   const f = U.fleet({ a: mk(0.95, T0, 0.5, 1), b: mk(0.1, T0 - 400000, 1, 2), c: null }, { now: T0 + 1000 });
   assert.equal(f.agents, 2); assert.equal(f.cold, 1); assert.equal(f.full, 1);
   assert.equal(f.cost, 3); assert.equal(f.perHour, 4); near(f.ratio, 0.75);
-  assert.deepEqual(U.fleet({}), { agents: 0, cost: 0, perHour: 0, savings: 0, ratio: 0, cold: 0, full: 0 });
+  assert.deepEqual(U.fleet({}), { agents: 0, priced: 0, cost: 0, perHour: 0, savings: 0, ratio: 0, cold: 0, full: 0 });
 });
 
 test("formatters", () => {

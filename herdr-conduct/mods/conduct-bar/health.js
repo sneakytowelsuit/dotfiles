@@ -49,7 +49,13 @@ export function timerText(u, now = Date.now()) {
  */
 export function cacheTimer(t, u, { width = null, height = 6, hot = false, now = Date.now() } = {}) {
   const x = timerText(u, now);
-  if (!x) return none();
+  if (!x) {
+    if (!u?.cache?.seq?.length) return none();
+    return h_flex().items_center().gap(6).min_w(0).flex_1()
+      .tooltip("Share of input tokens read from cache in the latest sample")
+      .child(track(t, width, height, u.cache.last, t.accent, false))
+      .child(div().flex_none().text_size(10).text_color(t.muted).child(`cache hit ${pct(u.cache.last)}`));
+  }
   const color = timerColor(t, x.c.state, hot);
   return h_flex().items_center().gap(6).min_w(0).when(width != null, (d) => d.w(width)).when(width == null, (d) => d.flex_1())
     .tooltip(x.c.state === "cold"
@@ -78,9 +84,10 @@ export function cacheSpark(t, u, { height = 14, bar = 3 } = {}) {
 export function miniHealth(t, u, { hot = false, now = Date.now() } = {}) {
   if (!u?.ctx) return none();
   const c = timerOf(u.cache, now);
-  const color = c ? timerColor(t, c.state, hot) : t.dim;
+  const hit = c ? null : u.cache?.last;
+  const color = c ? timerColor(t, c.state, hot) : t.accent;
   return v_flex().w_full().gap(2).min_w(0)
-    .tooltip(`${ctxLabel(u)}${c ? ` · ${c.state === "cold" ? "cache cold" : `cache ${clock(c.remaining)}`}` : ""}`)
+    .tooltip(`${ctxLabel(u)}${c ? ` · ${c.state === "cold" ? "cache cold" : `cache ${clock(c.remaining)}`}` : hit != null ? ` · cache hit ${pct(hit)}` : ""}`)
     .child(track(t, null, 4, u.ctx.frac, ctxColor(t, clamp(u.ctx.frac)), u.ctx.frac >= NEAR_FULL))
-    .child(track(t, null, 2, c ? c.frac : 0, color, false));
+    .when(c != null || hit != null, (d) => d.child(track(t, null, 2, c?.frac ?? hit, color, false)));
 }

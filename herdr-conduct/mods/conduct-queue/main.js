@@ -88,7 +88,7 @@ export default class ConductQueue extends View {
     for (const a of stalled) if (!stuckSince.has(a)) stuckSince.set(a, now);
     for (const a of [...stuckSince.keys()]) if (!stalled.includes(a)) stuckSince.delete(a);
     await autoNudgeTick(new Map(m.list.map((n) => [n.address, { ...n, stuckSince: stuckSince.get(n.address) }])), now);
-    // Token usage and cache timers for Claude Code agents (self-throttled; not awaited: a first read can take a moment).
+    // Token usage and cache status for supported local agents (self-throttled; not awaited: a first read can take a moment).
     pollUsage(m.list).then((u) => {
       const o = Object.fromEntries(u);
       if (JSON.stringify(o) !== JSON.stringify(shared("conduct.usage") ?? {})) setShared("conduct.usage", o);

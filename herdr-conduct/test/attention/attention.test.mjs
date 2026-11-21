@@ -89,9 +89,26 @@ test("claude resume detection", () => {
   assert.equal(R.canResume(["/etc/profiles/per-user/a/bin/claude"]), true);
   assert.equal(R.canResume(["claude", "--continue"]), false);
   assert.equal(R.canResume(["claude", "-r", "abc"]), false);
-  assert.equal(R.canResume(["codex"]), false);
   assert.deepEqual(R.withContinue(["claude", "do it"]), ["claude", "--continue", "do it"]);
-  assert.deepEqual(R.withContinue(["codex"]), ["codex"]);
+});
+
+test("Codex resume detection", () => {
+  assert.equal(R.canResume(["codex"]), true);
+  assert.deepEqual(R.withContinue(["/bin/.codex-wrapped", "--no-alt-screen"]),
+    ["/bin/.codex-wrapped", "resume", "--last", "--no-alt-screen"]);
+  for (const args of [["resume", "--last"], ["exec", "task"], ["task"], ["-C", "/other"], ["--", "task"]]) {
+    const argv = ["codex", ...args];
+    assert.equal(R.canResume(argv), false);
+    assert.deepEqual(R.withContinue(argv), argv);
+  }
+});
+
+test("recovery uses the reported harness when supplied", () => {
+  const argv = ["/bin/.codex-wrapped", "--no-daemon"];
+  assert.deepEqual(R.resumeArgs(argv, "codex"), ["resume", "--last"]);
+  assert.equal(R.canResume(argv, "claude-code"), false);
+  assert.deepEqual(R.withContinue(argv, "unknown"), argv);
+  assert.deepEqual(R.resumeArgs(argv, null), ["resume", "--last"]);
 });
 
 test("restartSpec and runArgs", () => {

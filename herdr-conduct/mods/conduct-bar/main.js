@@ -152,9 +152,9 @@ export default class ConductBar extends View {
       tip: `What happened while you were away (${first("g.feed")})`, click: () => run("mod.open", { name: "conduct-feed" }) });
     const nudge = this.pill(t, { id: "c-nudge", glyph: "nudge", label: "NUDGE", n: ready ? flagged : 0, color: t.accent, fill: pressing, compact,
       tip: ready ? `Ask a primary agent to check on its sub-agents (${first("g.nudge")})` : "No primary agent yet: one that has started sub-agents", click: () => this.nudge() });
-    const cost = f.agents
+    const cost = f.priced
       ? this.pill(t, { id: "c-cost", glyph: "cost", label: "SPEND", n: `${money(f.perHour)}/hr${f.cold ? ` · ❄ ${f.cold}` : ""}`, color: f.full ? t.blocked : t.muted, fill: false, compact,
-          tip: `Claude Code usage: ${money(f.cost)} this session, ${f.cold} cold cache${f.cold === 1 ? "" : "s"}, ${f.full} near full (${first("g.usage")})`, click: () => run("mod.open", { name: "conduct-usage" }) })
+          tip: `Tracked spend: ${money(f.cost)} this session, ${f.cold} cold cache${f.cold === 1 ? "" : "s"}, ${f.full} near full (${first("g.usage")})`, click: () => run("mod.open", { name: "conduct-usage" }) })
       : div();
     const map = this.pill(t, { id: "c-map", glyph: "map", label: "MAP", n: total, color: t.muted, fill: false, compact,
       tip: `Agent map: every agent as a cell (${first("g.map")})`, click: () => run("mod.open", { name: "conduct-map" }) });

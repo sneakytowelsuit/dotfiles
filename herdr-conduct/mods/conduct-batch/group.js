@@ -1,4 +1,4 @@
-import { parseForm } from "./form.js";
+import { lookupHarness } from "./harnesses.js";
 
 const PERMISSION = /\b(?:permissions?|approve|approval|allow|authoriz[ei]\w*|run this command|do you want to (?:proceed|run|execute|allow|make)|would you like to (?:proceed|run|execute|allow))\b/i;
 
@@ -15,7 +15,9 @@ export function normalizeMessage(message) {
 
 export function inspectPrompt(agent, screen) {
   const tail = String(screen).trimEnd().split("\n").slice(-30).join("\n");
-  if (parseForm(tail)) return { form: true };
+  const kind = lookupHarness(agent.app)?.prompt.classify(screen, agent).kind ?? "unknown";
+  if (kind === "form") return { kind, form: true };
+  if (kind !== "text") return { kind };
   const lines = tail.split("\n").map((line) => line.trim())
     .filter((line) => /[\p{L}\p{N}]/u.test(line) && !/^(?:[›❯>]|esc to|enter to|[?] for shortcuts)/i.test(line));
   const reported = agent.msg?.trim();
@@ -23,6 +25,7 @@ export function inspectPrompt(agent, screen) {
     ? reported
     : lines.findLast((line) => /\?$/.test(line)) ?? lines.at(-1) ?? "";
   return {
+    kind,
     message,
     key: normalizeMessage(message),
     permission: PERMISSION.test([agent.kind, message, ...lines.slice(-8)].join(" ")),
@@ -32,7 +35,7 @@ export function inspectPrompt(agent, screen) {
 export function groupPrompts(entries) {
   const groups = new Map();
   for (const { agent, prompt } of entries) {
-    if (prompt.form || !prompt.key) continue;
+    if (prompt.kind !== "text" || !prompt.key) continue;
     if (!groups.has(prompt.key)) groups.set(prompt.key, { ...prompt, agents: [] });
     const group = groups.get(prompt.key);
     group.permission ||= prompt.permission;

@@ -2,7 +2,7 @@
 // Every function is async: call them from handlers as `() => fn()`.
 
 import { hc, exec, shared, setShared } from "herdr";
-import { STATUS_MESSAGE, shouldAutoNudge, restartSpec, runArgs, withContinue, tail, recordNudge, normConfig } from "./recover.js";
+import { STATUS_MESSAGE, shouldAutoNudge, restartSpec, runArgs, canResume, withContinue, tail, recordNudge, normConfig } from "./recover.js";
 
 let clock = null;
 /** Give the actions the AsyncContext from init(_p, cx) so they can wait with cx.timer (never a handler's cx). */
@@ -62,12 +62,13 @@ export async function planRestart(address) {
 
 /**
  * Kill it and start it again with the same name, folder, parent and flags. It LOSES its conversation unless
- * its program resumes itself. `resume`: add --continue to a Claude Code argv that has no resume flag.
+ * its program resumes itself. `resume`: use the harness-specific resume command.
  */
-export async function restart(address, resume = false) {
+export async function restart(address, resume = false, app) {
   const { spec, error } = await planRestart(address);
   if (!spec) return fail(`Not restarted: ${error}.`);
-  const argv = resume ? withContinue(spec.argv) : spec.argv;
+  if (resume && !canResume(spec.argv, app)) return fail("Not restarted: this command no longer supports automatic resume.");
+  const argv = resume ? withContinue(spec.argv, app) : spec.argv;
   const args = runArgs(spec, argv);
   try {
     const k = await hc(["kill", address]);
@@ -81,7 +82,7 @@ export async function restart(address, resume = false) {
   try {
     const r = await hc(args);
     if (r.code !== 0) return fail(`It was ended but starting it again failed: ${msg(r)}\nBy hand: hc ${args.join(" ")}`);
-    return { ok: true, text: `Restarted${resume ? " with --continue" : ""}. It is a new terminal${spec.name ? ` named ${spec.name}` : ""}; its old address ${address} is gone.` };
+    return { ok: true, text: `Restarted${resume ? " with resume" : ""}. It is a new terminal${spec.name ? ` named ${spec.name}` : ""}; its old address ${address} is gone.` };
   } catch (e) { return fail(`It was ended but starting it again failed: ${e.message ?? e}\nBy hand: hc ${args.join(" ")}`); }
 }
 

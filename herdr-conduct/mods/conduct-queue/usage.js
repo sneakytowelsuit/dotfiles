@@ -1,4 +1,4 @@
-// Token usage, cache and cost maths for Claude Code agents. Pure: no herdr imports (node-testable).
+// Token usage, cache and cost maths for Conduct. Pure: no herdr imports (node-testable).
 // Input: the usage numbers Claude Code records in its session transcript (one JSON line per API response).
 // Only numbers, model names and timestamps are ever looked at; message text is never read.
 // Shared by conduct-usage (copied by sync-shared.sh next to the mods that draw it; edit the copy in conduct-usage/).
@@ -82,6 +82,26 @@ export function parseTurns(input) {
   return out.sort((a, b) => a.t - b.t);
 }
 
+/** Normalize the filtered Codex token events. The cumulative counter identifies repeated snapshots. */
+export function codexMetrics(lines, now = Date.now()) {
+  const records = new Map();
+  let model = null;
+  for (const line of lines) {
+    let d;
+    try { d = JSON.parse(line); } catch { continue; }
+    if (typeof d?.model === "string") { model = d.model; continue; }
+    const t = Date.parse(d?.t);
+    if (!isFinite(t) || !n0(d?.window) || !n0(d?.cumulative) || !n0(d?.input)) continue;
+    const cacheRead = Math.min(d.input, n0(d.cached));
+    records.set(d.cumulative, {
+      t, model, input: d.input - cacheRead, cacheRead, output: n0(d.output),
+      cacheCreate5m: 0, cacheCreate1h: 0, window: d.window,
+    });
+  }
+  const turns = [...records.values()].slice(-KEEP_TURNS);
+  return metrics(turns, { now, measuredOnly: true });
+}
+
 // ---- pricing --------------------------------------------------------------------------------------------------
 
 export function priceFor(model) {
@@ -154,39 +174,39 @@ export function growthPerTurn(turns) {
  *   turns: recent turn records (time order); totals: per-model totals for the whole session (default: from turns);
  *   now: ms (injected for tests). Null when there are no turns.
  */
-export function metrics(turns, { totals = null, now = Date.now(), partial = false } = {}) {
+export function metrics(turns, { totals = null, now = Date.now(), partial = false, measuredOnly = false } = {}) {
   const ts = (turns ?? []).filter(Boolean);
   if (!ts.length) return null;
   const last = ts[ts.length - 1];
   const used = ctxTokens(last);
-  const total = windowFor(last.model);
+  const total = last.window ?? windowFor(last.model);
   const g = growthPerTurn(ts);
-  const tot = totals ?? ts.reduce((a, r) => addTurn(a, r), emptyTotals());
+  const tot = measuredOnly ? null : totals ?? ts.reduce((a, r) => addTurn(a, r), emptyTotals());
 
   const recent = ts.slice(-SEQ_LEN);
   const sumAll = (a, f) => a.reduce((s, r) => s + r[f], 0);
   const rd = sumAll(recent, "cacheRead");
   const rall = recent.reduce((s, r) => s + ctxTokens(r), 0);
-  const ttl = ttlFor(ts.slice(-SEQ_LEN));
+  const ttl = measuredOnly ? null : ttlFor(recent);
   const p = priceFor(last.model);
   const wr = ttl === TTL_1H ? p.c1 : p.c5;
 
   const inWin = ts.filter((r) => r.t >= now - RATE_WINDOW_MS);
-  let rate = { tokPerMin: 0, costPerHour: 0 };
+  let rate = { tokPerMin: 0, costPerHour: measuredOnly ? null : 0 };
   if (inWin.length) {
     const mins = Math.min(10, Math.max(1, (now - inWin[0].t) / 60000));
     const tok = inWin.reduce((s, r) => s + r.input + r.output + r.cacheCreate5m + r.cacheCreate1h, 0);
-    const cost = inWin.reduce((s, r) => s + costOf(r), 0);
-    rate = { tokPerMin: Math.round(tok / mins), costPerHour: round((cost / mins) * 60, 3) };
+    const cost = measuredOnly ? 0 : inWin.reduce((s, r) => s + costOf(r), 0);
+    rate = { tokPerMin: Math.round(tok / mins), costPerHour: measuredOnly ? null : round((cost / mins) * 60, 3) };
   }
 
   return {
     ctx: { used, total, frac: round(used / total), left: Math.max(0, total - used), turnsLeft: g ? Math.floor(Math.max(0, total - used) / g) : null },
     cache: {
       ratio: round(rall > 0 ? rd / rall : 0), last: round(hitRatio(last)), seq: recent.map((r) => round(hitRatio(r), 2)),
-      ttl, lastAt: last.t, coldExtra: round((used * Math.max(0, wr - p.cr)) / 1e6, 4),
+      ttl, lastAt: last.t, coldExtra: measuredOnly ? null : round((used * Math.max(0, wr - p.cr)) / 1e6, 4),
     },
-    cost: { session: round(totalCost(tot)), lastTurn: round(costOf(last)), savings: round(totalSavings(tot)), turns: Object.values(tot).reduce((s, b) => s + b.n, 0), known: p.known, partial },
+    cost: measuredOnly ? null : { session: round(totalCost(tot)), lastTurn: round(costOf(last)), savings: round(totalSavings(tot)), turns: Object.values(tot).reduce((s, b) => s + b.n, 0), known: p.known, partial },
     rate, model: last.model ?? "unknown", at: now,
   };
 }
@@ -204,17 +224,18 @@ export function cacheTimer(c, now = Date.now()) {
 
 /** Totals over { address: metrics }. `working`: set of addresses currently working (for "cold while working"). */
 export function fleet(map, { now = Date.now() } = {}) {
-  let cost = 0, perHour = 0, savings = 0, rd = 0, all = 0, cold = 0, full = 0, agents = 0;
+  let priced = 0, cost = 0, perHour = 0, savings = 0, rd = 0, all = 0, cold = 0, full = 0, agents = 0;
   for (const u of Object.values(map ?? {})) {
     if (!u) continue;
     agents++;
+    if (u.cost) priced++;
     cost += u.cost?.session ?? 0; perHour += u.rate?.costPerHour ?? 0; savings += u.cost?.savings ?? 0;
     const w = Math.max(0.0001, u.ctx?.used ?? 0);
     rd += (u.cache?.ratio ?? 0) * w; all += w;
     if (cacheTimer(u.cache, now)?.state === "cold") cold++;
     if ((u.ctx?.frac ?? 0) >= NEAR_FULL) full++;
   }
-  return { agents, cost: round(cost), perHour: round(perHour, 3), savings: round(savings), ratio: round(all ? rd / all : 0), cold, full };
+  return { agents, priced, cost: round(cost), perHour: round(perHour, 3), savings: round(savings), ratio: round(all ? rd / all : 0), cold, full };
 }
 
 export const money = (x) => (x == null ? "" : x >= 100 ? `$${Math.round(x)}` : x >= 1 ? `$${x.toFixed(2)}` : x >= 0.01 ? `$${x.toFixed(2)}` : x > 0 ? "<$0.01" : "$0.00");

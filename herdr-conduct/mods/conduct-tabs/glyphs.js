@@ -1,3 +1,4 @@
+import { lookupHarness } from "./harnesses.js";
 import { svg } from "gpui-kit";
 
 export const GLYPH = Object.freeze({
@@ -35,13 +36,9 @@ export const icon = (name, size, color) => {
   return color ? el.text_color(color) : el;
 };
 
-// Which harness an agent runs, as a small mark. The key is `status.app` (see HARNESSES.md); add a line and an SVG for a new one.
-export const HARNESS = Object.freeze({
-  "claude-code": { icon: "harness-claude.svg", name: "Claude Code" },
-  codex: { icon: "harness-codex.svg", name: "Codex" },
-});
-export const harnessName = (app) => HARNESS[app]?.name ?? (app ? app : "Agent");
+export const harnessName = (app) => lookupHarness(app)?.identity.name ?? (app || "Agent");
 export const harnessIcon = (app, size, color) => {
-  const el = svg(`mods/conduct-glyphs/${HARNESS[app]?.icon ?? "harness-generic.svg"}`).size(size);
+  const icon = lookupHarness(app)?.identity.icon ?? "harness-generic.svg";
+  const el = svg(`mods/conduct-glyphs/${icon}`).size(size);
   return color ? el.text_color(color) : el;
 };
