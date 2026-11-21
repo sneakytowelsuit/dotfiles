@@ -18,6 +18,10 @@
       ids = [
         "*" # every keyboard...
         "-1050:0407" # ...except the YubiKey, which "types" one-time codes
+        # ...and Mouseless's virtual keyboard: it reads keyd's output, so
+        # letting keyd grab it too makes the two feed each other in a loop.
+        "-4711:0815"
+        "-4711:0816"
       ];
       settings = {
         main.capslock = "overload(control, esc)";

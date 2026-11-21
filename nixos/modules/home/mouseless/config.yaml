@@ -1,13 +1,17 @@
 # mouseless config: https://github.com/jbensmann/mouseless
-# Hold Right Alt (tap = Right Alt) to enter the "mouse" layer. Caps Lock is
+# Hold Left Alt (tap = Left Alt) to enter the "mouse" layer. Caps Lock is
 # already Esc/Ctrl via keyd (see nixos/keyboard.nix), so it is not used here.
-# No `devices:` list, so every keyboard is read (including keyd's virtual one).
+# Read only keyd's virtual keyboard (keyd already grabs the physical ones).
+# This mouseless version wants a device *path*, which changes between boots, so
+# the service fills in the placeholder below (see ../mouseless.nix).
+devices:
+  - "@KEYD_DEVICE@"
 baseMouseSpeed: 750.0
 
 layers:
   - name: initial
     bindings:
-      rightalt: tap-hold-next-release rightalt ; toggle-layer mouse ; 200
+      leftalt: tap-hold-next-release leftalt ; toggle-layer mouse ; 200
 
   - name: mouse
     bindings:
