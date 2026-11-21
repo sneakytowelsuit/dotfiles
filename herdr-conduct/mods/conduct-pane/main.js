@@ -5,9 +5,11 @@ import { View, div } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { panes, props, theme } from "herdr";
 import { NAME, needs, colorOf, ink, model, age } from "./attn.js";
+import { readUsage } from "./usage-poll.js";
+import { contextBar, cacheTimer } from "./health.js";
 
 export default class ConductPane extends View {
-  init(_p, cx) { cx.timer.every(15000, (cx) => cx.notify()); }
+  init(_p, cx) { cx.timer.every(2000, (cx) => cx.notify()); } // seconds countdown on the cache timer
 
   render() {
     const t = theme();
@@ -19,6 +21,7 @@ export default class ConductPane extends View {
     const loud = a ? needs(a) : false;
     const name = a?.title || p.title || p.program?.name || "shell";
     const subs = a?.children.length ?? 0;
+    const u = a ? readUsage(a.address) : null;
     return h_flex()
       .id(`c-ph-${p.pane}`)
       .relative()
@@ -30,9 +33,11 @@ export default class ConductPane extends View {
         div().absolute().left(0).top(0).w_full().h(3).bg(st ? color : "#00000000")
           .when(loud, (d) => d.loop("opacity", { from: 0.35, to: 1, period: 1000 })),
       )
+      .child(div().absolute().left(0).bottom(0).w_full().child(contextBar(t, u, { height: 2, label: false })))
       .child(div().flex_1().truncate().font_semibold().text_color(p.focused ? t.accent : t.foreground).child(name))
       .when(subs > 0, (el) => el.child(div().flex_none().text_color(t.dim).child(`★ ${subs} sub-agent${subs === 1 ? "" : "s"}`)))
       .child(div().truncate().max_w(220).text_color(t.dim).child(p.branch ? `⎇ ${p.branch}` : ""))
+      .when(Boolean(u), (el) => el.child(div().flex_none().w(190).child(cacheTimer(t, u, { width: 190, height: 4, hot: st === "working" }))))
       .when(Boolean(st && st !== "idle"), (el) =>
         el.child(
           div().flex_none().h(18).px(8).flex().items_center().gap(6).rounded(9).text_size(10).font_semibold()

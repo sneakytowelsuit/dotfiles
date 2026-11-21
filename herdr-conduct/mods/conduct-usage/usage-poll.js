@@ -31,7 +31,9 @@ const projectDir = (cwd) => cwd.replace(/[^A-Za-z0-9]/g, "-");
 
 function cwdOf(node) {
   const x = terminals().find((t) => t.address === node.address);
-  return x?.cwd ?? x?.foreground?.cwd ?? (node.pane ? panes().find((p) => p.pane === node.pane)?.cwd : null) ?? null;
+  // The folder the agent process runs in (what Claude Code names its project folder after), not the folder the shell
+  // in that terminal started in.
+  return x?.foreground?.cwd ?? (node.pane ? panes().find((p) => p.pane === node.pane)?.cwd : null) ?? x?.cwd ?? null;
 }
 const isRemote = (node) => Boolean(node.space && spaces().find((s) => s.id === node.space)?.machine) || /[/:]/.test(node.address);
 

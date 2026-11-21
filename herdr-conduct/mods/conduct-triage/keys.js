@@ -11,6 +11,7 @@ export const ACTIONS = [
   { id: "g.prev", scope: "global", label: "Previous agent that needs you", command: "conduct-bar.prev", def: ["alt-p"] },
   { id: "g.nudge", scope: "global", label: "Nudge a primary agent", command: "conduct-bar.nudge", def: ["alt-m"] },
   { id: "g.settings", scope: "global", label: "Open these settings", command: "mod.open:conduct-settings", def: ["alt-,"] },
+  { id: "g.usage", scope: "global", label: "Open the usage dialog", command: "mod.open:conduct-usage", def: ["ctrl-alt-u"] },
   { id: "g.feed", scope: "global", label: "Open the activity feed", command: "mod.open:conduct-feed", def: ["ctrl-alt-f"] },
   { id: "g.alerts", scope: "global", label: "Open alert settings", command: "mod.open:conduct-alerts", def: ["ctrl-alt-a"] },
 

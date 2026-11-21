@@ -6,6 +6,7 @@
     "alt-t": "mod.open:conduct-triage",
     "alt-,": "mod.open:conduct-settings",
     "ctrl-alt-f": "mod.open:conduct-feed",
-    "ctrl-alt-a": "mod.open:conduct-alerts"
+    "ctrl-alt-a": "mod.open:conduct-alerts",
+    "ctrl-alt-u": "mod.open:conduct-usage"
   }
 }

@@ -7,6 +7,8 @@ import { h_flex } from "gpui-base";
 import { agents, spaces, run, theme, window as win, nextCommand, openOverlay, settings, shared } from "herdr";
 import { first } from "./keys.js";
 import { unreadCount } from "./feed.js";
+import { readAllUsage } from "./usage-poll.js";
+import { fleet, money } from "./usage.js";
 import { ORDER, NAME, CRITICAL, sorted, colorOf, ink, go, halo, nextNeeding, model } from "./attn.js";
 
 function own(el) {
@@ -15,6 +17,7 @@ function own(el) {
 
 export default class ConductBar extends View {
   init(_p, cx) {
+    cx.timer.every(5000, (cx) => cx.notify()); // the cold-cache count changes with time
     // alt-n / alt-p (keys.json: "conduct-bar.next" / "conduct-bar.prev") jump through what needs you.
     cx.spawn(async () => {
       for (;;) {
@@ -135,7 +138,7 @@ export default class ConductBar extends View {
     // chips scroll sideways.
     // The measured width is the real window width; every size below is a design size that grows with zoom.
     const zoom = Number(settings()?.zoom) || 1;
-    const right = w.buttons ? 490 : 390; // the right-hand buttons are wider with the FEED pill
+    const right = w.buttons ? 620 : 520; // the right-hand group: cost, FEED, INBOX, NUDGE, gear
     const width = (this.barW ?? 1400) / zoom;
     const need = shown.length * 104 + 30;
     const centred = width - 2 * right >= need;
@@ -152,6 +155,15 @@ export default class ConductBar extends View {
       .tooltip(`What happened while you were away (${first("g.feed")})`)
       .on_click(() => run("mod.open", { name: "conduct-feed" }))
       .child(feedN ? `FEED ${feedN}` : "FEED");
+    // Spend and cache health of the Claude Code agents: a quiet outline (red only when contexts are nearly full).
+    const f = fleet(readAllUsage());
+    const cost = f.agents
+      ? own(h_flex()).id("c-cost").h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
+          .border_1().border_color(f.full ? t.blocked : t.border).text_color(f.full ? t.blocked : t.muted).hover((x) => x.bg(t.hover))
+          .tooltip(`Claude Code usage: ${money(f.cost)} this session, ${f.cold} cold cache${f.cold === 1 ? "" : "s"}, ${f.full} near full (${first("g.usage")})`)
+          .on_click(() => run("mod.open", { name: "conduct-usage" }))
+          .child(`${money(f.perHour)}/hr${f.cold ? ` · ❄ ${f.cold}` : ""}`)
+      : div();
     return h_flex()
       .id("c-bar")
       .relative()
@@ -174,6 +186,7 @@ export default class ConductBar extends View {
       .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).child(`${total} agent${total === 1 ? "" : "s"}`))
       .child(
         h_flex().flex_none().items_center()
+          .child(div().flex_none().mr(8).child(cost))
           .child(div().flex_none().mr(8).child(feed))
           .child(div().flex_none().mr(8).child(unread ? halo(hot, 13, 4, inbox) : inbox))
           .child(div().flex_none().mr(6).child(pressing ? halo(t.accent, 13, 4, nudge) : nudge))
