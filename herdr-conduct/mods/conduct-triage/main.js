@@ -24,6 +24,7 @@ export default class ConductTriage extends View {
     this.review = false; // also show REVIEW (finished) items
     this.tails = new Map(); // address -> last lines of its screen
     this.forms = new Map(); // address -> the question form on its screen, if it shows one
+    this.opt = new Map(); // address -> { q, set, ts }: what was just clicked, shown at once until the screen confirms
     this.raw = false; // v: show the screen instead of the form
     this.otherFor = null; // the "Type something" option the reply line is answering
     const want = shared("conduct.triage_focus");
@@ -61,7 +62,10 @@ export default class ConductTriage extends View {
       if (r.code !== 0) return;
       const lines = r.stdout.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
       this.tails.set(address, lines.slice(-12));
-      this.forms.set(address, parseForm(r.stdout));
+      const form = parseForm(r.stdout);
+      this.forms.set(address, form);
+      const o = this.opt.get(address);
+      if (o && (Date.now() - o.ts > 400 || form?.question !== o.q)) this.opt.delete(address);
       cx.notify();
     });
   }
@@ -100,13 +104,22 @@ export default class ConductTriage extends View {
     const opt = form.options.find((o) => o.n === num);
     if (!opt) return;
     if (form.step === "question" && opt.other && !form.multi) { this.otherFor = num; this.input.focus(); this.cx.notify(); return; }
+    if (form.step === "question") {
+      // Show the click at once; the terminal catches up in a moment.
+      const cur = this.opt.get(n.address);
+      const base = cur && cur.q === form.question ? new Set(cur.set) : new Set(form.options.filter((o) => o.checked).map((o) => o.n));
+      if (form.multi) base.has(num) ? base.delete(num) : base.add(num);
+      else { base.clear(); base.add(num); }
+      this.opt.set(n.address, { q: form.question, set: base, ts: Date.now() });
+      this.cx.notify();
+    }
     press(n.address, String(num));
     if (form.step === "review" && num === 1) markSeen(n);
     this.look(n);
   }
 
   look(n) {
-    for (const ms of [600, 1500]) this.cx.timer.after(ms, (cx) => this.loadTail(n.address, cx));
+    for (const ms of [120, 350, 800]) this.cx.timer.after(ms, (cx) => this.loadTail(n.address, cx));
   }
 
   advance(n, form) {
@@ -163,8 +176,9 @@ export default class ConductTriage extends View {
 
   // The question, as a form in the app's own font.
   formView(t, n, form, color) {
+    const pend = this.opt.get(n.address);
     const opt = (o) => {
-      const on = o.checked;
+      const on = pend && pend.q === form.question ? pend.set.has(o.n) : o.checked;
       const mark = form.multi
         ? div().flex_none().size(16).rounded(4).border_1().border_color(on ? color : t.input).when(on, (d) => d.bg(color)).flex().items_center().justify_center().text_size(11).text_color(ink(color)).child(on ? "✓" : "")
         : div().flex_none().size(16).rounded_full().border_1().border_color(this.otherFor === o.n ? color : t.input).flex().items_center().justify_center().when(this.otherFor === o.n, (d) => d.child(div().size(8).rounded_full().bg(color)));

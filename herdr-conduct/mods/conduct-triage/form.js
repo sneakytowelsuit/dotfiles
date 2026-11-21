@@ -45,7 +45,10 @@ export function parseForm(text) {
     const m = OPT.exec(line);
     if (m) {
       if (m[2] !== undefined) form.multi = true;
-      form.options.push({ n: Number(m[1]), label: m[3], checked: m[2] === "✔" || m[2] === "x" || m[2] === "X", desc: "", other: /^Type something/i.test(m[3]) });
+      // A single select marks the answer you already gave with a trailing ✔ ("2. Blue ✔").
+      const marked = /\s+✔$/.test(m[3]);
+      const label = m[3].replace(/\s+✔$/, "");
+      form.options.push({ n: Number(m[1]), label, checked: marked || m[2] === "✔" || m[2] === "x" || m[2] === "X", desc: "", other: /^Type something/i.test(label) });
       continue;
     }
     if (/^Submit$/.test(t) && form.options.length) continue; // a multi-select's own submit row
