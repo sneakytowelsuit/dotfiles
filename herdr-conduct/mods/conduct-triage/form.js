@@ -29,7 +29,7 @@ export function parseForm(text) {
   if (!hasFooter && !content.some((l) => /Review your answers/.test(l))) return null;
 
   // Preview layout: split every row at the column where the box starts.
-  const form = { step: "question", tabs: null, header: null, question: "", multi: false, options: [], answers: [], cursor: null, inserting, preview: null, notes: null, notesPlaceholder: false };
+  const form = { step: "question", tabs: null, header: null, question: "", multi: false, options: [], answers: [], unanswered: false, cursor: null, inserting, preview: null, notes: null, notesPlaceholder: false };
   const boxLine = content.find((l) => l.includes("┌"));
   if (boxLine) {
     const c = boxLine.indexOf("┌");
@@ -63,6 +63,7 @@ export function parseForm(text) {
     }
     if (/^[☐☒]\s+\S/.test(t) && !form.options.length) { form.header = t.replace(/^[☐☒]\s+/, ""); continue; }
     if (/Review your answers/.test(t)) { form.step = "review"; continue; }
+    if (/not answered all questions/.test(t)) { form.unanswered = true; continue; }
     if (form.step === "review") {
       let m = /^●\s+(.*)$/.exec(t);
       if (m) { form.answers.push({ q: m[1], a: "" }); continue; }

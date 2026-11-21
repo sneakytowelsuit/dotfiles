@@ -6,7 +6,7 @@
 //   1-4      quick replies     (blocked: yes / no / continue / skip)
 //   a Claude question (AskUserQuestion) is drawn as a form: click an option, or press its number (single select picks it,
 //            multi select toggles it); Enter continues / submits; v shows the raw screen instead
-//   o        open its terminal (marks read)   n  nudge its primary   d  also show finished (REVIEW)   Esc / q  close
+//   g / o    go to the agent (drops you into its terminal, marks read)   n  nudge its primary   d  also show finished (REVIEW)   Esc / q  close
 // "Read" is the same mark the sidebar's NEW tag uses.
 
 import { View, div } from "gpui-kit";
@@ -32,6 +32,7 @@ export default class ConductTriage extends View {
     this.notesInput.on("change", (_e, cx) => { this.notesText = this.notesInput.value(); cx.notify(); });
     this.notesInput.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
     this.notesInput.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
+    this.stage = new Map(); // address -> { q, n }: a single-select pick not yet sent (click it again to clear)
     this.opt = new Map(); // address -> { q, set, ts }: what was just clicked, shown at once until the screen confirms
     this.raw = false; // v: show the screen instead of the form
     this.otherFor = null; // the "Type something" option the reply line is answering
@@ -215,50 +216,89 @@ export default class ConductTriage extends View {
     else if (form.multi) { if (form.inserting) press(n.address, "up"); press(n.address, "right"); this.look(n); }
   }
 
-  key(e, cx) {
-    this.cx = cx;
+  // Everything a hotkey does, by name, so the hint chips can run the same thing on a click.
+  act(name) {
     const n = this.now();
     const { q } = this.queue();
+    const form = n ? this.forms.get(n.address) : null;
+    const cx = this.cx;
+    switch (name) {
+      case "read": if (n) this.step(n, q, true, cx); return;
+      case "leave": if (n) this.step(n, q, false, cx); return;
+      case "reply": if (form?.preview != null) this.notesInput.focus(); else if (n) this.input.focus(); return;
+      case "go": if (n) { closeOverlay(props().overlay); go(n); } return;
+      case "nudge": {
+        const p = n?.parent;
+        closeOverlay(props().overlay);
+        openOverlay({ mod: "conduct-send", kind: "dialog", width: 600, props: { mode: "primary", address: p ?? undefined } });
+        return;
+      }
+      case "review": this.review = !this.review; cx.notify(); return;
+      case "raw": this.raw = !this.raw; cx.notify(); return;
+      case "back": if (n && form?.tabs) { press(n.address, "left"); this.look(n); } return;
+      case "skip": if (n && form?.tabs) { this.stage.delete(n.address); press(n.address, "right"); this.look(n); } return;
+      case "dismiss": if (n) { press(n.address, "esc"); this.look(n); } return;
+      case "close": closeOverlay(props().overlay); return;
+      case "enter":
+        if (form?.preview != null) this.selectPreview(n, form, q);
+        else if (form?.step === "review" || form?.multi) this.advance(n, form);
+        else if (form) this.confirm(n, form);
+        else if (n) this.input.focus();
+        return;
+    }
+  }
+
+  // Click on a single-select option: stage it (click again to clear). Enter / Confirm sends it; a digit sends at once.
+  pick(n, form, num) {
+    const cur = this.stage.get(n.address);
+    if (cur && cur.q === form.question && cur.n === num) this.stage.delete(n.address);
+    else this.stage.set(n.address, { q: form.question, n: num });
+    this.cx.notify();
+  }
+
+  confirm(n, form) {
+    const st = this.stage.get(n.address);
+    if (st && st.q === form.question) { this.stage.delete(n.address); this.choose(n, form, st.n); }
+    else if (form.tabs) this.act("skip");
+  }
+
+  // Start the question over where Claude's menu allows it: untick everything in a multi select, or drop a staged pick.
+  reset(n, form) {
+    this.stage.delete(n.address);
+    if (form.multi) {
+      const pend = this.opt.get(n.address);
+      const on = pend && pend.q === form.question ? [...pend.set] : form.options.filter((o) => o.checked).map((o) => o.n);
+      for (const num of on) press(n.address, String(num));
+      this.opt.set(n.address, { q: form.question, set: new Set(), ts: Date.now() });
+      this.look(n);
+    }
+    this.cx.notify();
+  }
+
+  key(e, cx) {
+    this.cx = cx;
     if (this.typing) {
       if (e.key === "escape") { this.handle.focus(); cx.stop_propagation(); }
       return;
     }
     const stop = () => cx.stop_propagation();
-    switch (e.key) {
-      case "right": case "r": if (n) this.step(n, q, true, cx); return stop();
-      case "left": case "u": if (n) this.step(n, q, false, cx); return stop();
-      case "i": { const f = n && this.forms.get(n.address); if (f?.preview != null) this.notesInput.focus(); else if (n) this.input.focus(); return stop(); }
-      case "enter": {
-        const form = n && this.forms.get(n.address);
-        if (form && form.preview != null) this.selectPreview(n, form, q);
-        else if (form && (form.step === "review" || form.multi)) this.advance(n, form);
-        else if (n) this.input.focus();
-        return stop();
-      }
-      case "v": this.raw = !this.raw; cx.notify(); return stop();
-      case "b": { const f = n && this.forms.get(n.address); if (f?.tabs) { press(n.address, "left"); this.look(n); } return stop(); }
-      case "o": if (n) { closeOverlay(props().overlay); go(n); } return stop();
-      case "n": {
-        const p = n?.parent;
-        closeOverlay(props().overlay);
-        openOverlay({ mod: "conduct-send", kind: "dialog", width: 600, props: { mode: "primary", address: p ?? undefined } });
-        return stop();
-      }
-      case "d": this.review = !this.review; cx.notify(); return stop();
-      case "escape": case "q": case "t": closeOverlay(props().overlay); return stop();
-      case "1": case "2": case "3": case "4": case "5": case "6": case "7": case "8": case "9": {
-        const form = n && !this.raw && this.forms.get(n.address);
-        if (form) { this.choose(n, form, Number(e.key)); return stop(); }
-        if (Number(e.key) > 4) return stop();
-        const r = n && (QUICK[n.status] ?? QUICK.default)[Number(e.key) - 1];
-        if (r) this.reply(r);
-        return stop();
-      }
+    const map = { right: "read", r: "read", left: "leave", u: "leave", i: "reply", enter: "enter", v: "raw", b: "back", o: "go", g: "go", n: "nudge", d: "review", escape: "close", q: "close", t: "close", s: "skip" };
+    if (map[e.key]) { this.act(map[e.key]); return stop(); }
+    if (/^[1-9]$/.test(e.key)) {
+      const n = this.now();
+      const form = n && !this.raw && this.forms.get(n.address);
+      if (form) { this.stage.delete(n.address); this.choose(n, form, Number(e.key)); return stop(); }
+      if (Number(e.key) > 4) return stop();
+      const r = n && (QUICK[n.status] ?? QUICK.default)[Number(e.key) - 1];
+      if (r) this.reply(r);
+      return stop();
     }
   }
 
-  hint(t, k, label) {
-    return h_flex().gap(5).items_center()
+  hint(t, k, label, fn) {
+    return h_flex().id(`c-h-${k}`).gap(5).items_center().cursor_pointer().rounded(5)
+      .hover((x) => x.bg(t.hover))
+      .on_click(this.on(fn))
       .child(div().h(18).px(6).flex().items_center().rounded(4).bg(t.raised).border_1().border_color(t.border).text_size(10).font_semibold().text_color(t.foreground).child(k))
       .child(div().text_size(10).text_color(t.dim).child(label));
   }
@@ -266,10 +306,13 @@ export default class ConductTriage extends View {
   // The question, as a form in the app's own font.
   formView(t, n, form, color) {
     const pend = this.opt.get(n.address);
+    const st = this.stage.get(n.address);
+    const staged = st && st.q === form.question ? st.n : null; // a single-select pick not sent yet
     const opt = (o) => {
-      // In a preview layout the highlighted row is the choice; elsewhere, what Claude reports as ticked.
+      // In a preview layout the highlighted row is the choice; a staged pick beats what Claude reports; else what it ticked.
       const on = form.preview != null
         ? (pend && pend.q === form.question ? pend.set.has(o.n) : form.cursor === o.n)
+        : staged != null && !form.multi ? staged === o.n
         : pend && pend.q === form.question ? pend.set.has(o.n) : o.checked;
       const mark = form.multi
         ? div().flex_none().size(16).rounded(4).border_1().border_color(on ? color : t.input).when(on, (d) => d.bg(color)).flex().items_center().justify_center().text_size(11).text_color(ink(color)).child(on ? "✓" : "")
@@ -278,7 +321,7 @@ export default class ConductTriage extends View {
       return h_flex().id(`c-o-${o.n}`).gap(10).items_start().px(10).py(8).rounded(8).cursor_pointer()
         .border_1().border_color(on || this.otherFor === o.n ? color : t.border).bg(on ? color + "22" : t.surface)
         .hover((x) => x.border_color(color))
-        .on_click(this.on(() => this.choose(n, form, o.n)))
+        .on_click(this.on(() => (form.multi || o.other || form.preview != null || form.step !== "question" ? this.choose(n, form, o.n) : this.pick(n, form, o.n))))
         .child(div().flex_none().h(16).flex().items_center().child(mark))
         .child(
           v_flex().flex_1().min_w(0).gap(2)
@@ -318,6 +361,7 @@ export default class ConductTriage extends View {
             ),
         );
     }
+    const ticked = form.multi && (pend && pend.q === form.question ? pend.set.size > 0 : form.options.some((o) => o.checked));
     const canBack = Boolean(form.tabs && form.tabs.some((x) => x.done)); // not on the first question
     return v_flex().flex_1().min_h(0).overflow_y_scrollbar().gap(8)
       .when(Boolean(form.tabs), (el) =>
@@ -332,17 +376,28 @@ export default class ConductTriage extends View {
           .when(form.multi, (d) => d.child(div().text_size(11).text_color(t.dim).child("Choose any number")))
           .children(form.options.filter((o) => !(form.multi && o.other)).map(opt))
           .when(this.otherFor != null, (d) => d.child(div().text_size(11).text_color(color).child("Type your answer below and press Enter.")))
-          .when(form.multi || canBack, (d) => d.child(
-            h_flex().gap(8).pt(2)
-              .when(form.multi, (r) => r.child(btn("c-cont", "Continue", true, () => this.advance(n, form))))
-              .when(canBack, (r) => r.child(btn("c-back", "← Back", false, () => { press(n.address, "left"); this.look(n); }))))))
+          .when(!form.multi && staged == null && form.options.some((o) => o.checked && !o.other), (d) => d.child(
+            div().text_size(10).text_color(t.dim).child("Already answered. Claude's menu can't clear a sent answer: pick another to change it, or skip.")))
+          .child(
+            h_flex().gap(8).pt(2).flex_wrap()
+              .when(form.multi, (r) => r.child(btn("c-cont", ticked ? "Continue" : "Skip →", true, () => this.advance(n, form))))
+              .when(!form.multi, (r) => r.child(staged != null
+                ? btn("c-confirm", "Confirm", true, () => this.confirm(n, form))
+                : form.tabs ? btn("c-skip", "Skip this question →", true, () => this.act("skip")) : btn("c-dismiss", "Dismiss question", false, () => this.act("dismiss"))))
+              .when(staged != null || (form.multi && ticked), (r) => r.child(btn("c-reset", "Reset", false, () => this.reset(n, form))))
+              .when(canBack, (r) => r.child(btn("c-back", "← Back", false, () => { press(n.address, "left"); this.look(n); })))))
       .when(form.step === "review", (el) =>
         el
           .child(div().text_size(15).font_semibold().text_color(t.foreground).child("Review your answers"))
+          .when(form.unanswered, (d) => d.child(div().text_size(11).text_color(t.muted).child("Some questions are left unanswered: the agent can ask you about those next.")))
           .children(form.answers.map((a) =>
             v_flex().gap(2).p(10).rounded(8).bg(t.surface).border_1().border_color(t.border)
               .child(div().text_size(11).text_color(t.dim).child(a.q))
               .child(div().text_size(13).font_semibold().text_color(t.foreground).child(a.a))))
+          .children((form.tabs ?? []).filter((x) => !x.done).map((x) =>
+            v_flex().gap(2).p(10).rounded(8).border_1().border_color(t.border)
+              .child(div().text_size(11).text_color(t.dim).child(x.label))
+              .child(div().text_size(12).text_color(t.dim).child("not answered"))))
           .child(h_flex().gap(8).pt(2)
             .child(btn("c-submit", "Submit answers", true, () => this.choose(n, form, 1)))
             .child(btn("c-cancelq", "Cancel", false, () => this.choose(n, form, 2)))
@@ -393,7 +448,13 @@ export default class ConductTriage extends View {
                     h_flex().gap(10).items_center()
                       .child(div().flex_none().h(20).px(9).flex().items_center().rounded(10).text_size(10).font_semibold().bg(color).text_color(ink(color)).child(NAME[n.status]))
                       .child(div().flex_1().min_w(0).truncate().text_size(16).font_semibold().child(n.title))
-                      .child(div().flex_none().text_size(11).text_color(t.muted).child(age(n.since))),
+                      .child(div().flex_none().text_size(11).text_color(t.muted).child(age(n.since)))
+                      .child(
+                        div().id("c-goto").flex_none().h(22).px(9).flex().items_center().rounded(11).cursor_pointer().text_size(10).font_semibold()
+                          .border_1().border_color(color).text_color(color).hover((x) => x.bg(color).text_color(ink(color)))
+                          .tooltip("Drop into this agent's terminal (g)")
+                          .on_click(this.on(() => this.act("go"))).child("GO TO AGENT"),
+                      ),
                   )
                   .child(div().text_size(11).text_color(t.dim).child(`${parent ? `↳ ${parent.title} · ` : ""}${n.address} · ${n.spaceName} / ${n.tabName}`))
                   .when(Boolean(n.msg || n.kind) && !form, (el) => el.child(div().text_size(12).text_color(t.foreground).child(n.msg || `waiting: ${n.kind}`))),
@@ -404,7 +465,7 @@ export default class ConductTriage extends View {
                   .children(tail.length ? tail.map((l) => div().truncate().text_size(11).text_color(t.muted).child(l)) : [div().text_size(11).text_color(t.dim).child("(reading its screen…)")]),
               )
               .when(!form, (el) => el.child(
-                h_flex().gap(6).flex_wrap().children(quick.map((r, i) => this.hint(t, String(i + 1), r))),
+                h_flex().gap(6).flex_wrap().children(quick.map((r, i) => this.hint(t, String(i + 1), r, () => this.reply(r)))),
               ))
               .child(
                 h_flex().gap(8).items_center()
@@ -424,13 +485,13 @@ export default class ConductTriage extends View {
       )
       .child(
         h_flex().gap(14).flex_wrap().pt(4)
-          .child(this.hint(t, "→ / r", "mark read"))
-          .child(this.hint(t, "← / u", "leave unread"))
-          .child(this.hint(t, "i", "reply"))
-          .child(this.hint(t, "o", "open"))
-          .child(this.hint(t, "n", "nudge primary"))
-          .child(this.hint(t, "d", "+review"))
-          .child(this.hint(t, "v", "raw screen")),
+          .child(this.hint(t, "→ / r", "mark read", () => this.act("read")))
+          .child(this.hint(t, "← / u", "leave unread", () => this.act("leave")))
+          .child(this.hint(t, "i", "reply", () => this.act("reply")))
+          .child(this.hint(t, "g", "go to agent", () => this.act("go")))
+          .child(this.hint(t, "n", "nudge primary", () => this.act("nudge")))
+          .child(this.hint(t, "d", "+review", () => this.act("review")))
+          .child(this.hint(t, "v", "raw screen", () => this.act("raw"))),
       );
   }
 }
