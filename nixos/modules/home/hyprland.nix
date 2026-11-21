@@ -81,6 +81,16 @@ lib.mkIf osConfig.programs.hyprland.enable {
   systemd.user.services.noctalia.Service.ExecCondition =
     ''${pkgs.systemd}/lib/systemd/systemd-xdg-autostart-condition "Hyprland" ""'';
 
+  # Official Framework Laptop 13 Pro wallpaper pack (frame.work/wallpapers),
+  # linked where Noctalia's wallpaper rotation below looks for it.
+  home.file."Pictures/Wallpapers/framework".source = pkgs.fetchzip {
+    url = "https://downloads.frame.work/assets/framework-laptop13pro-wallpaper-pack.zip";
+    hash = "sha256-BHo7glMjORE5IPRPTfScJ4QBXqiu/+Ga7oruH6rHYms=";
+    stripRoot = false;
+    # frame.work's CDN rejects curl's default User-Agent.
+    curlOptsList = [ "-A" "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0" ];
+  };
+
   programs.noctalia = {
     enable = true;
     systemd.enable = true; # restarts on crash and when its config changes
@@ -92,6 +102,14 @@ lib.mkIf osConfig.programs.hyprland.enable {
         polkit_agent = true; # password/YubiKey prompts for pkexec, etc.
         # Apps started from the launcher keep running if Noctalia restarts.
         launch_apps_as_systemd_services = true;
+      };
+      wallpaper = {
+        directory = "/home/austin/Pictures/Wallpapers/framework";
+        automation = {
+          enabled = true;
+          interval_seconds = 1800; # rotate every 30 minutes
+          order = "random";
+        };
       };
       idle.behavior = {
         lock.enabled = true; # 10 minutes
