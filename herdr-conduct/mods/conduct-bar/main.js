@@ -116,13 +116,15 @@ export default class ConductBar extends View {
       .tooltip(ready ? "Ask a primary agent to check on its sub-agents (alt-m)" : "No primary agent yet: one that has started sub-agents")
       .on_click(() => this.nudge())
       .child("⚑ NUDGE");
-    const unread = list.filter((a) => CRITICAL.includes(a.status) && a.unseen).length;
+    const unreadList = sorted(list).filter((a) => CRITICAL.includes(a.status) && a.unseen);
+    const unread = unreadList.length;
+    const hot = unread ? colorOf(t, unreadList[0].status) : t.border;
     const inbox = own(h_flex())
       .id("c-inbox")
       .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
-      .border_1().border_color(unread ? t.foreground : t.border)
-      .text_color(unread ? t.foreground : t.dim)
-      .hover((x) => x.bg(t.hover))
+      .border_1().border_color(hot)
+      .when(unread > 0, (x) => x.bg(hot).text_color(ink(hot)))
+      .when(unread === 0, (x) => x.text_color(t.dim).hover((y) => y.bg(t.hover)))
       .tooltip("Triage: step through the critical unread, on hotkeys (alt-t)")
       .on_click(() => run("mod.open", { name: "conduct-triage" }))
       .child(`INBOX ${unread}`);
@@ -146,7 +148,7 @@ export default class ConductBar extends View {
       )
       .child(div().flex_1().h_full())
       .child(div().flex_none().text_size(10).text_color(t.dim).px(8).child("alt-t inbox · alt-n next · alt-m nudge"))
-      .child(div().flex_none().mr(8).child(inbox))
+      .child(div().flex_none().mr(8).child(unread ? halo(hot, 13, 4, inbox) : inbox))
       .child(div().flex_none().mr(6).child(pressing ? halo(t.accent, 13, 4, nudge) : nudge))
       .child(this.button(t, "c-new", "plus", () => run("tab.new")))
       .when(Boolean(w.buttons), (el) =>

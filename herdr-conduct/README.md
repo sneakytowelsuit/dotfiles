@@ -28,4 +28,6 @@ The mods share `attn.js` (the model and helpers); edit the copy in `mods/conduct
 
 `test/scenario.sh up [n]` starts `n` fake agents (`test/fake-agent.sh`) as sub-agents of the terminal it runs in, reporting every state over OSC 7501 with a Claude-like activity line; `down` removes them. They echo whatever they're sent. Run it from a terminal inside Herdr so that terminal becomes the primary. Herdr-core will type its automatic notes about them into that terminal.
 
+`test/haiku-question.sh [n]` starts real Haiku agents that stop on a blocking question (a few cents each), for testing the real blocked -> reply -> review path.
+
 Limits: how long an agent has been in a state is counted from when this layout first saw it (core's `status_ms` isn't exposed for sub-agents). The activity line is parsed from Claude Code's screen only.

@@ -128,10 +128,20 @@ export default class ConductTriage extends View {
     const tail = n ? this.tails.get(n.address) ?? [] : [];
     return v_flex().id("c-triage").track_focus(this.handle).on_key_down((e, cx) => this.key(e, cx))
       .w_full().h_full().p(18).gap(12).bg(t.popover).text_color(t.foreground)
+      .border_t(3).border_color(n ? color : t.border)
       .child(
         h_flex().items_center().gap(10)
           .child(div().text_size(15).font_semibold().child("Triage"))
-          .child(div().text_size(11).text_color(t.dim).child(n ? `${idx + 1} of ${q.length} unread` : "inbox zero"))
+          .child(
+            n
+              ? div().h(18).px(8).flex().items_center().rounded(9).text_size(10).font_semibold().bg(color).text_color(ink(color)).child(`${idx + 1} of ${q.length} unread`)
+              : div().text_size(11).text_color(t.dim).child("inbox zero"),
+          )
+          // One dot per unread, in its own color; the one you're on is larger.
+          .child(h_flex().gap(4).items_center().children(q.slice(0, 24).map((x) => {
+            const here = x.address === n?.address;
+            return div().flex_none().size(here ? 10 : 6).rounded_full().bg(colorOf(t, x.status)).when(here, (d) => d.loop("opacity", { from: 0.5, to: 1, period: 900 }));
+          })))
           .child(div().flex_1())
           .child(div().text_size(10).text_color(this.review ? t.accent : t.dim).child(this.review ? "critical + review" : "critical only"))
           .child(div().text_size(11).text_color(t.dim).child("Esc")),
@@ -169,7 +179,9 @@ export default class ConductTriage extends View {
               )
           : v_flex().flex_1().items_center().justify_center().gap(6)
               .child(div().text_size(18).font_semibold().child("Inbox zero"))
-              .child(div().text_size(12).text_color(t.dim).child("Nothing critical is unread. It comes back here if a state changes.")),
+              .child(div().text_size(12).text_color(t.dim).child("Nothing critical is unread. It comes back here if a state changes."))
+              .when(!this.review && m.list.some((x) => x.status === "done" && x.unseen), (el) =>
+                el.child(div().pt(8).text_size(12).font_semibold().text_color(colorOf(t, "done")).child(`${m.list.filter((x) => x.status === "done" && x.unseen).length} finished and unread: press d`))),
       )
       .child(
         h_flex().gap(14).flex_wrap().pt(4)
