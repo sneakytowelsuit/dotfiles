@@ -42,7 +42,6 @@ modules/home/             austin's Home Manager config, shared by all hosts
   emacs.nix + doom/         Doom Emacs (doom/*.el is the Doom config)
   git.nix                   git, gh, lazygit
   vscode.nix, agents.nix
-  herdr-layout.nix          links ../../herdr-dungeon-crawler into ~/.config/herdr-app
   kdeconnect.nix            KDE Connect daemon and tray icon
   tools.nix                 everyday CLI tools: jq, yq, python3, fd, tree, file, imagemagick, ...
   cursor.nix                Bibata Modern Classic cursor, 32px, for GNOME and Hyprland

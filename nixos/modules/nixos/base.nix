@@ -54,7 +54,7 @@
     # `M-x eglot-reconnect` brings back nixpkgs/option completion.
     (lib.hiPrio (
       pkgs.writeShellScriptBin "nixos-rebuild" ''
-        ${pkgs.procps}/bin/pkill -KILL -x nixd-attrset-eval || true
+        ${pkgs.procps}/bin/pkill -KILL -f '(^|/)nixd-attrset-eval( |$)' || true
         exec ${config.system.build.nixos-rebuild}/bin/nixos-rebuild "$@"
       ''
     ))

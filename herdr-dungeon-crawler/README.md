@@ -24,7 +24,7 @@ Don't overwrite files you already have: if `dungeon`, a `dungeon*` theme or a `d
 
 ## NixOS
 
-This repo's NixOS config manages it declaratively: `nixos/modules/home/herdr-layout.nix` links every file in this folder into `~/.config/herdr-app` (the layout, the themes and the mods), one file at a time, so Herdr can still write its own files beside them. Edit here, then `sudo nixos-rebuild switch`.
+This repo's NixOS config does not manage it. Copy `layouts/`, `themes/` and `mods/` into `~/.config/herdr-app` by hand and re-copy after edits.
 
 ## Privacy
 

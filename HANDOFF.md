@@ -28,10 +28,10 @@ nixos/flake.nix              inputs + mkHost helper; `framework = mkHost "framew
 nixos/hosts/framework/       machine-specific: hardware, boot, NPU, fprintd, stateVersions
 nixos/modules/nixos/         base.nix, desktop.nix (shared: GDM, sound, printing), gnome.nix, hyprland.nix,
                              keyboard.nix (keyd), yubikey.nix, kdeconnect.nix, users/austin.nix
-nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, herdr-layout.nix, kdeconnect.nix, tools.nix, cursor.nix,
+nixos/modules/home/          Home Manager: shell.nix, git.nix, emacs.nix + doom/, vscode.nix, agents.nix, kdeconnect.nix, tools.nix, cursor.nix,
                              terminal.nix, hyprland.nix + hypr/*.lua
 nixos/pkgs/                  packages this repo defines (herdr-app), added to pkgs via overlays.default
-herdr-dungeon-crawler/       the Dungeon Crawler Carl Herdr layout (also a Herdr gallery layout); linked by herdr-layout.nix
+herdr-dungeon-crawler/       the Dungeon Crawler Carl Herdr layout (also a Herdr gallery layout); not managed by Nix (install by hand on each machine)
 .luarc.json (repo root)      points lua-language-server at Hyprland's stubs (~/.config/hypr/stubs)
 ```
 
@@ -136,13 +136,12 @@ Related setup ideas, once comfortable:
 - `pkgs/herdr-app/package.nix`: upstream's prebuilt tarball, patched with `autoPatchelfHook`. `runtimeDependencies` cover the libraries it `dlopen`s (Vulkan, Wayland, EGL). The wrapper puts nixpkgs' `herdr-core` on `PATH` and sets `HERDR_TELEMETRY=0`.
 - **Update:** take the version and sha256 from `https://releases.herdr.dev/app/latest.json`. Ignore the app's own updater (it can't write to the store).
 - herdr-core runs as a `systemd-run` user unit (`hc-serve-*`). `users.users.austin.linger = true` keeps it, and the terminals in it, alive across logouts.
-- `~/.config/herdr-app/` as a whole is **not** managed by Nix: the app writes its own settings, view state, `layouts/.state` and per-mod `.d.ts`/`jsconfig.json` there. Only the Dungeon Crawler Carl layout is managed, file by file, by `modules/home/herdr-layout.nix` (see below), so those directories stay real.
+- `~/.config/herdr-app/` as a whole is **not** managed by Nix: the app writes its own settings, view state, `layouts/.state` and per-mod `.d.ts`/`jsconfig.json` there. The Dungeon Crawler Carl layout there is a plain copy, also not managed by Nix (see below).
 
 ### Dungeon Crawler Carl layout
 
 - Source of truth: `herdr-dungeon-crawler/` at the repo root. It is laid out like Herdr's config home (`layouts/`, `themes/`, `mods/`) with a `RECIPE.md`, `README.md` and `preview.png`, so it is also a **Herdr gallery layout**: the repo carries the `herdr-layout` topic, and anyone can install it by pointing an agent at `sneakytowelsuit/dotfiles`, folder `herdr-dungeon-crawler`.
-- `modules/home/herdr-layout.nix` (imported from `terminal.nix`) links each file of `layouts/`, `themes/` and `mods/` into `~/.config/herdr-app` with `xdg.configFile`, `force = true` (the files were first made by hand there). It skips the recipe, preview, `sprites/src/` and scripts. Edit in the repo, `git add` new files, rebuild; Herdr hot-reloads the links.
-- The files are read-only store links, so `layout.set` and other tree edits to `dungeon.json` fail by design; edit the repo copy. To try a change before rebuilding, edit a copy and delete the link.
+- Deliberately **not** bundled into the NixOS build: copy `layouts/`, `themes/` and `mods/` into `~/.config/herdr-app` by hand (or via the gallery recipe) on each machine. Re-copy after editing the repo.
 - Mods share five modules by copy (`floors.js`, `scene.js`, `cast.js`, `avatar.js`, `context.js`): edit `mods/dcc-crawlers/` and run `herdr-dungeon-crawler/sync-shared.sh`. Sprites are text in `mods/dcc-crawlers/sprites/src/`, built by `sprites/build.sh`. The cast has 22 entries; the six `variant: true` ones are Mordecai's other floor forms (floors 2 to 9; the wiki lists none for 5, 7, 10, 11), hand-picked only and excluded from automatic assignment. Each has a `floor` field that draws an `F<n>` badge on its portrait (`avatar.js`). The sprite file name is the lower-cased character name with every non-alphanumeric run turned into `-`.
 - The pane headers and sidebar cards show `N of M crawlers remaining` for Claude Code agents: the model's context window minus the tokens in the latest `usage` block of the session transcript (`~/.claude/projects/<folder>/*.jsonl`). It is read by `mods/dcc-crawlers/context.js` (copied into `dcc-pane` by `sync-shared.sh`) with `sh`, `ls`, `tail` and `grep`, every 20 s and on status changes.
 - Floor and character choices live in Herdr's shared state (`dcc.floors` and `dcc.cast` in `~/.config/herdr-app/shared.json`), not in Nix.
