@@ -5,7 +5,7 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { agents, spaces, run, theme, window as win, nextCommand, openOverlay } from "herdr";
-import { ORDER, NAME, needs, sorted, colorOf, ink, go, halo, nextNeeding } from "./attn.js";
+import { ORDER, NAME, needs, sorted, colorOf, ink, go, halo, nextNeeding, model } from "./attn.js";
 
 function own(el) {
   return el.on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_mouse_down("right", (_e, cx) => cx.stop_propagation());
@@ -17,7 +17,8 @@ export default class ConductBar extends View {
     cx.spawn(async () => {
       for (;;) {
         const c = await nextCommand();
-        const a = nextNeeding(agents(), c === "prev" ? -1 : 1);
+        if (c === "nudge") { this.nudge(); continue; }
+        const a = nextNeeding(model().list, c === "prev" ? -1 : 1);
         if (a) go(a);
       }
     });
@@ -41,6 +42,10 @@ export default class ConductBar extends View {
     this.hold++;
     if (this.held) { this.held = false; return; }
     pick();
+  }
+
+  nudge() {
+    openOverlay({ mod: "conduct-send", kind: "dialog", width: 600, props: { mode: "primary" } });
   }
 
   button(t, id, icon, onClick, danger) {
@@ -84,40 +89,54 @@ export default class ConductBar extends View {
       .id(`c-a-${a.address}`)
       .h(24).px(9).gap(6).items_center().rounded(12).cursor_pointer().text_size(11)
       .bg(color).text_color(ink(color))
-      .tooltip(`${NAME[a.status]}: ${a.space_name} / ${a.tab_name}`)
+      .tooltip(`${NAME[a.status]}: ${a.spaceName} / ${a.tabName}`)
       .on_click(() => go(a))
       .child(div().max_w(150).truncate().font_semibold().child(label))
-      .child(div().max_w(90).truncate().opacity(0.75).child(a.space_name));
+      .child(div().max_w(90).truncate().opacity(0.75).child(a.spaceName));
     return halo(color, 12, 4, chip);
   }
 
   render() {
     const t = theme();
-    const list = agents();
+    const m = model();
+    const list = m.list;
     const w = win() ?? {};
-    const by = (s) => list.filter((a) => a.status === s);
+    const by = (st) => list.filter((a) => a.status === st);
     const wants = sorted(list).filter(needs);
+    const shown = ORDER.filter((st) => by(st).length > 0 || ["blocked", "done", "working", "idle"].includes(st));
     const total = list.length;
+    const ready = m.primaries.length > 0;
+    const pressing = wants.length > 0 && ready;
+    const nudge = own(h_flex())
+      .id("c-nudge")
+      .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
+      .border_1().border_color(pressing ? t.accent : t.border)
+      .when(pressing, (el) => el.bg(t.accent).text_color(ink(t.accent)))
+      .when(!pressing, (el) => el.text_color(ready ? t.muted : t.dim).hover((x) => x.bg(t.hover)))
+      .tooltip(ready ? "Ask a primary agent to check on its sub-agents (alt-m)" : "No primary agent yet: one that has started sub-agents")
+      .on_click(() => this.nudge())
+      .child("⚑ NUDGE");
     return h_flex()
       .size_full()
       .items_center()
-      .gap(4)
+      .gap(2)
       .pl(12)
       .bg(t.chrome)
       .border_b(1)
       .border_color(wants.length ? t.blocked : t.border)
       .when(w.platform === "macos" && w.titlebar === "none" && !w.fullscreen, (el) => el.pl(72))
-      .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).pr(6).child(`${total} AGENT${total === 1 ? "" : "S"}`))
-      .children(ORDER.map((s) => this.count(t, s, by(s).length, list)))
+      .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).pr(6).child(`${total}`))
+      .children(shown.map((st) => this.count(t, st, by(st).length, list)))
       .child(div().flex_none().w(1).h(20).mx(8).bg(t.border))
       .child(
         wants.length
-          ? h_flex().flex_shrink(1).min_w(0).overflow_hidden().gap(2).items_center().children(wants.slice(0, 5).map((a) => this.who(t, a)))
-              .when(wants.length > 5, (el) => el.child(div().flex_none().px(6).text_size(11).text_color(t.muted).child(`+${wants.length - 5}`)))
+          ? h_flex().flex_shrink(1).min_w(0).overflow_hidden().gap(2).items_center().children(wants.slice(0, 3).map((a) => this.who(t, a)))
+              .when(wants.length > 3, (el) => el.child(div().flex_none().px(6).text_size(11).text_color(t.muted).child(`+${wants.length - 3} more`)))
           : div().text_size(11).text_color(t.dim).child("Nothing needs you."),
       )
       .child(div().flex_1().h_full())
-      .child(div().flex_none().text_size(10).text_color(t.dim).px(8).child("alt-n next · alt-p prev"))
+      .child(div().flex_none().text_size(10).text_color(t.dim).px(8).child("alt-n next · alt-m nudge"))
+      .child(div().flex_none().mr(6).child(pressing ? halo(t.accent, 13, 4, nudge) : nudge))
       .child(this.button(t, "c-new", "plus", () => run("tab.new")))
       .when(Boolean(w.buttons), (el) =>
         el.child(

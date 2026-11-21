@@ -1,21 +1,24 @@
-// Conduct layout: pane header. A status stripe across the top, and a filled, pulsing tag when
-// this terminal needs you, so a glance at the grid shows which pane is calling.
+// Conduct layout: pane header. A status stripe across the top and a filled, pulsing tag with how long
+// the terminal has been in that state, so a glance at the grid shows which pane is calling.
 
 import { View, div } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { panes, agents, props, theme } from "herdr";
-import { NAME, needs, colorOf, ink } from "./attn.js";
+import { panes, props, theme } from "herdr";
+import { NAME, needs, colorOf, ink, model, age } from "./attn.js";
 
 export default class ConductPane extends View {
+  init(_p, cx) { cx.timer.every(15000, (cx) => cx.notify()); }
+
   render() {
     const t = theme();
     const p = panes().find((x) => x.pane === props()?.pane);
     if (!p) return div();
-    const ag = agents().find((x) => x.pane === p.pane);
-    const st = p.status ?? ag?.status ?? null;
+    const a = p.terminal ? model().nodes.get(p.terminal) : null;
+    const st = a?.status ?? null;
     const color = st ? colorOf(t, st) : t.dim;
-    const loud = st === "blocked" || st === "done";
-    const name = ag?.title || p.title || p.program?.name || "shell";
+    const loud = a ? needs(a) : false;
+    const name = a?.title || p.title || p.program?.name || "shell";
+    const subs = a?.children.length ?? 0;
     return h_flex()
       .id(`c-ph-${p.pane}`)
       .relative()
@@ -28,14 +31,15 @@ export default class ConductPane extends View {
           .when(loud, (d) => d.loop("opacity", { from: 0.35, to: 1, period: 1000 })),
       )
       .child(div().flex_1().truncate().font_semibold().text_color(p.focused ? t.accent : t.foreground).child(name))
-      .child(div().truncate().max_w(260).text_color(t.dim).child(p.branch ? `⎇ ${p.branch}` : ""))
+      .when(subs > 0, (el) => el.child(div().flex_none().text_color(t.dim).child(`★ ${subs} sub-agent${subs === 1 ? "" : "s"}`)))
+      .child(div().truncate().max_w(220).text_color(t.dim).child(p.branch ? `⎇ ${p.branch}` : ""))
       .when(Boolean(st && st !== "idle"), (el) =>
         el.child(
-          div().flex_none().h(18).px(8).flex().items_center().rounded(9).text_size(10).font_semibold()
+          div().flex_none().h(18).px(8).flex().items_center().gap(6).rounded(9).text_size(10).font_semibold()
             .border_1().border_color(color)
             .when(loud, (d) => d.bg(color).text_color(ink(color)).loop("opacity", { from: 0.6, to: 1, period: 1000 }))
             .when(!loud, (d) => d.text_color(color))
-            .child(NAME[st]),
+            .child(`${NAME[st]}${a?.since ? ` ${age(a.since)}` : ""}`),
         ),
       );
   }

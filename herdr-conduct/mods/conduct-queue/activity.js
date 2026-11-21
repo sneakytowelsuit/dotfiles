@@ -1,15 +1,11 @@
 // What a working agent says it is doing, read off its screen: Claude Code shows a line like
-// "✻ Thingamajigging… (1m 22s · ↓ 11.8k tokens · thought for 1s)" while it works. Agents that
-// print nothing like it return null, and the row falls back to its space and tab.
+// "✻ Thingamajigging… (1m 22s · ↓ 11.8k tokens · thought for 1s)" while it works. Also a signature
+// of the screen that ignores the ticking clock, so a hung agent's screen compares equal over time.
 
-import { hc } from "herdr";
-
-// A spinner glyph, a capitalised word, an ellipsis, then optional (stats).
 const LINE = /^\s*[^\sA-Za-z0-9(]\s+([A-Z][A-Za-z'’-]+)(?:…|\.\.\.)(?:\s*\((.*)\))?\s*$/;
 
 export function parse(text) {
   const lines = String(text).split("\n");
-  // The live line sits near the bottom, above the input box; scan up from the end.
   for (let i = lines.length - 1, seen = 0; i >= 0 && seen < 25; i--) {
     if (!lines[i].trim()) continue;
     seen++;
@@ -19,11 +15,12 @@ export function parse(text) {
   return null;
 }
 
-export async function readActivity(address) {
-  try {
-    const r = await hc(["read", address]);
-    return r.code === 0 ? parse(r.stdout) : null;
-  } catch {
-    return null;
-  }
+/** The screen with the activity line reduced to its verb and token count (not its elapsed time). */
+export function signature(text) {
+  return String(text).split("\n").map((l) => {
+    const m = LINE.exec(l);
+    if (!m) return l;
+    const tokens = (m[2] ?? "").split("·").map((s) => s.trim()).find((s) => /tokens/.test(s)) ?? "";
+    return `ACT ${m[1]} ${tokens}`;
+  }).join("\n");
 }
