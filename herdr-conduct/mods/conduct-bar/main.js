@@ -166,6 +166,14 @@ export default class ConductBar extends View {
           .on_click(() => run("mod.open", { name: "conduct-usage" }))
           .child(`${money(f.perHour)}/hr${f.cold ? ` · ❄ ${f.cold}` : ""}`)
       : div();
+    // The agent map: the whole fleet as a grid (hotkey in Settings).
+    const map = own(h_flex())
+      .id("c-map")
+      .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
+      .border_1().border_color(t.border).text_color(t.dim).hover((x) => x.bg(t.hover))
+      .tooltip(`Agent map: every agent as a cell (${first("g.map")})`)
+      .on_click(() => run("mod.open", { name: "conduct-map" }))
+      .child("MAP");
     return h_flex()
       .id("c-bar")
       .relative()
@@ -189,6 +197,7 @@ export default class ConductBar extends View {
       .child(
         h_flex().id("c-right").flex_none().items_center()
           .on_size_change((size, cx) => { if (Math.abs((this.rightW ?? 0) - size.width) > 1) { this.rightW = size.width; cx.notify(); } })
+          .child(div().flex_none().mr(8).child(map))
           .child(div().flex_none().mr(8).child(cost))
           .child(div().flex_none().mr(8).child(feed))
           .child(div().flex_none().mr(8).child(unread ? halo(hot, 13, 4, inbox) : inbox))
