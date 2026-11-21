@@ -146,6 +146,8 @@ export async function send(address, text, force = true) {
   return r.code === 0;
 }
 export const interrupt = (address) => hc(["interrupt", address]);
+/** Press keys in an agent's terminal (`hc keys`): digits, right, left, enter, esc. */
+export const press = (address, ...keys) => hc(["keys", address, ...keys]);
 
 /** Statuses the triage inbox treats as critical (REVIEW can be added from the inbox). */
 export const CRITICAL = ["blocked", "error", "stalled"];

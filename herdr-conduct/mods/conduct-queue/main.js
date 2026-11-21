@@ -96,8 +96,10 @@ export default class ConductQueue extends View {
           .child(
             a.status === "done"
               ? this.button(t, `c-o-${a.address}`, "OPEN", color, () => go(a))
-              : this.button(t, `c-s-${a.address}`, a.status === "blocked" ? "REPLY" : "NUDGE", color, () =>
-                  openOverlay({ mod: "conduct-send", kind: "dialog", width: 540, props: { mode: "agent", address: a.address } })),
+              : this.button(t, `c-s-${a.address}`, a.status === "blocked" ? "REPLY" : "NUDGE", color, () => {
+                  if (a.status === "blocked" && a.kind === "question") { setShared("conduct.triage_focus", a.address); run("mod.open", { name: "conduct-triage" }); }
+                  else openOverlay({ mod: "conduct-send", kind: "dialog", width: 540, props: { mode: "agent", address: a.address } });
+                }),
           ),
       )
       .tooltip(`${SAYS[a.status]} · ${a.spaceName} / ${a.tabName}`);
