@@ -101,7 +101,7 @@ export function model() {
     n.tabName = s?.tabs.find((q) => q.id === n.tab)?.name ?? "";
     n.pane = pn.find((q) => q.terminal === n.address)?.pane ?? null;
     n.since = sinceMap[n.address]?.status === n.raw ? sinceMap[n.address].t : null;
-    n.unseen = needs(n) && seen[n.address] !== n.status;
+    n.unseen = needs(n) && seen[n.address] !== `${n.status}@${n.since ?? ""}`;
     n.primary = !n.parent && n.children.length > 0;
     delete n._p; delete n._l;
   }
@@ -117,8 +117,9 @@ export function sorted(list) {
 /** Remember that you've looked at an agent in its current state. */
 export function markSeen(n) {
   const seen = { ...(shared("conduct.seen") ?? {}) };
-  if (seen[n.address] === n.status) return;
-  seen[n.address] = n.status;
+  const mark = `${n.status}@${n.since ?? ""}`; // the state *and when it began*: blocked again later is unread again
+  if (seen[n.address] === mark) return;
+  seen[n.address] = mark;
   setShared("conduct.seen", seen);
 }
 

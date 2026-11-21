@@ -32,6 +32,10 @@ export default class ConductTriage extends View {
     this.notesInput.on("change", (_e, cx) => { this.notesText = this.notesInput.value(); cx.notify(); });
     this.notesInput.on("focus", (_e, cx) => { this.typing = true; cx.notify(); });
     this.notesInput.on("blur", (_e, cx) => { this.typing = false; cx.notify(); });
+    this.qi = new Map(); // address -> index of the question the terminal is on (tabs.length = the review step)
+    this.qtext = new Map(); // "address|index" -> that question's text, to re-find our place
+    this.leave = null; // { address, action }: asked to leave an unfinished form, waiting for a second press
+    this.flash = null; // { text, next, until }: what just went out, shown on the next card
     this.stage = new Map(); // address -> { q, n }: a single-select pick not yet sent (click it again to clear)
     this.opt = new Map(); // address -> { q, set, ts }: what was just clicked, shown at once until the screen confirms
     this.raw = false; // v: show the screen instead of the form
@@ -56,7 +60,13 @@ export default class ConductTriage extends View {
   queue() {
     const m = model();
     const kinds = this.review ? [...CRITICAL, "done"] : CRITICAL;
-    return { m, q: sorted(m.list).filter((n) => kinds.includes(n.status) && n.unseen) };
+    const list = sorted(m.list).filter((n) => kinds.includes(n.status) && n.unseen);
+    // One primary's agents stay together; groups ordered by their most urgent member.
+    const g = (n) => n.parent ?? n.address;
+    const first = new Map();
+    list.forEach((n, i) => { if (!first.has(g(n))) first.set(g(n), i); });
+    const q = list.map((n, i) => [n, i]).sort((a, b) => first.get(g(a[0])) - first.get(g(b[0])) || a[1] - b[1]).map((x) => x[0]);
+    return { m, q };
   }
 
   now() {
@@ -73,6 +83,17 @@ export default class ConductTriage extends View {
       this.tails.set(address, lines.slice(-12));
       const form = parseForm(r.stdout);
       this.forms.set(address, form);
+      if (form?.tabs) {
+        const M = form.tabs.length;
+        if (form.step === "review") this.qi.set(address, M);
+        else {
+          let at = null;
+          for (let i = 0; i < M; i++) if (this.qtext.get(`${address}|${i}`) === form.question) { at = i; break; }
+          if (at == null) { at = this.qi.get(address); if (at == null || at >= M) at = Math.max(0, form.tabs.findIndex((x) => !x.done)); }
+          this.qi.set(address, at);
+          this.qtext.set(`${address}|${at}`, form.question);
+        }
+      } else if (!form) this.qi.delete(address);
       const o = this.opt.get(address);
       if (o && (Date.now() - o.ts > 400 || form?.question !== o.q)) this.opt.delete(address);
       if (form?.preview != null && form.cursor != null) {
@@ -151,7 +172,7 @@ export default class ConductTriage extends View {
       await send(n.address, text); // pasted: it also pressed Enter
       if (multi) { await press(n.address, "enter"); await press(n.address, "up"); } // Enter unticked it; tick it again
     }
-    if (!multi) { markSeen(n); this.step(n, q, true, this.cx); }
+    if (!multi) { if (form?.tabs) { this.bump(n, form, +1); this.cx.notify(); } else this.finishAgent(n, "1 answer"); }
     this.look(n);
   }
 
@@ -167,8 +188,7 @@ export default class ConductTriage extends View {
     await press(n.address, "enter");
     this.notesInput.set_value("");
     this.notesText = "";
-    markSeen(n);
-    this.step(n, q, true, this.cx);
+    if (form.tabs) { this.bump(n, form, +1); this.cx.notify(); } else this.finishAgent(n, "1 answer");
     this.look(n);
   }
 
@@ -203,7 +223,9 @@ export default class ConductTriage extends View {
       this.cx.notify();
     }
     press(n.address, String(num));
-    if (form.step === "review" && num === 1) markSeen(n);
+    if (form.step === "review") { if (num === 1) this.finishAgent(n, `${form.answers.length} answer${form.answers.length === 1 ? "" : "s"}`); }
+    else if (form.tabs && !form.multi) this.bump(n, form, +1); // answering moves the terminal to the next question
+    else if (!form.tabs && !form.multi && form.preview == null) this.finishAgent(n, "1 answer");
     this.look(n);
   }
 
@@ -213,7 +235,7 @@ export default class ConductTriage extends View {
 
   advance(n, form) {
     if (form.step === "review") this.choose(n, form, 1);
-    else if (form.multi) { if (form.inserting) press(n.address, "up"); press(n.address, "right"); this.look(n); }
+    else if (form.multi) { if (form.inserting) press(n.address, "up"); press(n.address, "right"); this.bump(n, form, +1); this.look(n); this.cx.notify(); }
   }
 
   // Everything a hotkey does, by name, so the hint chips can run the same thing on a click.
@@ -223,8 +245,15 @@ export default class ConductTriage extends View {
     const form = n ? this.forms.get(n.address) : null;
     const cx = this.cx;
     switch (name) {
-      case "read": if (n) this.step(n, q, true, cx); return;
-      case "leave": if (n) this.step(n, q, false, cx); return;
+      case "read": case "leave": {
+        if (!n) return;
+        // An open form is unfinished: ask once before walking away from it.
+        if (form && !(this.leave && this.leave.address === n.address && this.leave.action === name)) { this.leave = { address: n.address, action: name }; cx.notify(); return; }
+        this.leave = null;
+        this.step(n, q, name === "read", cx);
+        return;
+      }
+      case "stay": this.leave = null; cx.notify(); return;
       case "reply": if (form?.preview != null) this.notesInput.focus(); else if (n) this.input.focus(); return;
       case "go": if (n) { closeOverlay(props().overlay); go(n); } return;
       case "nudge": {
@@ -235,10 +264,10 @@ export default class ConductTriage extends View {
       }
       case "review": this.review = !this.review; cx.notify(); return;
       case "raw": this.raw = !this.raw; cx.notify(); return;
-      case "back": if (n && form?.tabs) { press(n.address, "left"); this.look(n); } return;
-      case "skip": if (n && form?.tabs) { this.stage.delete(n.address); press(n.address, "right"); this.look(n); } return;
+      case "back": if (n) this.back(n, form); return;
+      case "skip": if (n && form?.tabs) { this.stage.delete(n.address); press(n.address, "right"); this.bump(n, form, +1); this.look(n); cx.notify(); } return;
       case "dismiss": if (n) { press(n.address, "esc"); this.look(n); } return;
-      case "close": closeOverlay(props().overlay); return;
+      case "close": if (this.leave) { this.leave = null; cx.notify(); } else closeOverlay(props().overlay); return;
       case "enter":
         if (form?.preview != null) this.selectPreview(n, form, q);
         else if (form?.step === "review" || form?.multi) this.advance(n, form);
@@ -260,6 +289,44 @@ export default class ConductTriage extends View {
     const st = this.stage.get(n.address);
     if (st && st.q === form.question) { this.stage.delete(n.address); this.choose(n, form, st.n); }
     else if (form.tabs) this.act("skip");
+  }
+
+  bump(n, form, d) {
+    const M = form.tabs ? form.tabs.length : 0;
+    this.qi.set(n.address, Math.max(0, Math.min(M, (this.qi.get(n.address) ?? 0) + d)));
+  }
+
+  back(n, form) {
+    if (!form?.tabs) return;
+    press(n.address, "left");
+    this.bump(n, form, -1);
+    this.look(n);
+    this.cx.notify();
+  }
+
+  // Go to question k (or the review step, k = tabs.length): to the first tab, then right k times.
+  jump(n, form, k) {
+    const M = form.tabs.length;
+    const keys = [];
+    if (form.inserting) keys.push("up");
+    for (let i = 0; i < M; i++) keys.push("left");
+    for (let i = 0; i < k; i++) keys.push("right");
+    press(n.address, ...keys);
+    this.qi.set(n.address, k);
+    this.stage.delete(n.address);
+    this.look(n);
+    this.cx.notify();
+  }
+
+  // This agent's questions are all answered: say what went out, and go on to the next agent.
+  finishAgent(n, what) {
+    const { q } = this.queue();
+    const i = q.findIndex((x) => x.address === n.address);
+    const rest = q.filter((x) => x.address !== n.address);
+    const next = rest.length ? rest[Math.max(0, i) % rest.length] : null;
+    this.flash = { text: `Sent ${what} to ${n.title}`, next: next ? next.title : null, until: Date.now() + 5000 };
+    this.cx.timer.after(5200, (cx) => cx.notify());
+    this.step(n, q, true, this.cx);
   }
 
   // Start the question over where Claude's menu allows it: untick everything in a multi select, or drop a staged pick.
@@ -303,6 +370,24 @@ export default class ConductTriage extends View {
       .child(div().text_size(10).text_color(t.dim).child(label));
   }
 
+  // Which question we're on, and a way to jump to any of them.
+  tabStrip(t, n, form, color) {
+    const M = form.tabs.length;
+    const at = form.step === "review" ? M : this.qi.get(n.address) ?? 0;
+    const chip = (label, i, done, here) =>
+      div().id(`c-tab-${i}`).h(22).px(9).flex().items_center().rounded(11).cursor_pointer().text_size(10).font_semibold()
+        .border_1().border_color(here || done ? color : t.border)
+        .when(here, (d) => d.bg(color).text_color(ink(color)))
+        .when(!here && done, (d) => d.text_color(color))
+        .when(!here && !done, (d) => d.text_color(t.dim))
+        .hover((d) => d.border_color(color))
+        .on_click(this.on(() => this.jump(n, form, i)))
+        .child(`${done ? "✓ " : ""}${label}`);
+    return v_flex().gap(6)
+      .child(div().text_size(10).font_semibold().text_color(t.dim).child(at >= M ? "REVIEW" : `QUESTION ${at + 1} OF ${M}`))
+      .child(h_flex().gap(6).flex_wrap().children([...form.tabs.map((x, i) => chip(x.label, i, x.done, i === at)), chip("Review", M, false, at === M)]));
+  }
+
   // The question, as a form in the app's own font.
   formView(t, n, form, color) {
     const pend = this.opt.get(n.address);
@@ -340,9 +425,7 @@ export default class ConductTriage extends View {
       const mono = settings()?.font_family ?? "monospace";
       const nb = (l) => l.replace(/ /g, "\u00a0");
       return v_flex().flex_1().min_h(0).overflow_y_scrollbar().gap(10)
-        .when(Boolean(form.tabs), (el) => el.child(h_flex().gap(6).flex_wrap().children(form.tabs.map((x) =>
-          div().h(20).px(8).flex().items_center().rounded(10).text_size(10).font_semibold().border_1().border_color(x.done ? color : t.border)
-            .when(x.done, (d) => d.bg(color).text_color(ink(color))).when(!x.done, (d) => d.text_color(t.dim)).child(`${x.done ? "✓ " : ""}${x.label}`)))))
+        .when(Boolean(form.tabs), (el) => el.child(this.tabStrip(t, n, form, color)))
         .child(div().text_size(15).font_semibold().text_color(t.foreground).child(form.question || "(question)"))
         .child(
           h_flex().gap(14).items_start()
@@ -361,14 +444,11 @@ export default class ConductTriage extends View {
             ),
         );
     }
+    const nextUp = this.queue().q.length > 1;
     const ticked = form.multi && (pend && pend.q === form.question ? pend.set.size > 0 : form.options.some((o) => o.checked));
     const canBack = Boolean(form.tabs && form.tabs.some((x) => x.done)); // not on the first question
     return v_flex().flex_1().min_h(0).overflow_y_scrollbar().gap(8)
-      .when(Boolean(form.tabs), (el) =>
-        el.child(h_flex().gap(6).flex_wrap().children(form.tabs.map((x) =>
-          div().h(20).px(8).flex().items_center().rounded(10).text_size(10).font_semibold()
-            .border_1().border_color(x.done ? color : t.border).when(x.done, (d) => d.bg(color).text_color(ink(color))).when(!x.done, (d) => d.text_color(t.dim))
-            .child(`${x.done ? "✓ " : ""}${x.label}`)))))
+      .when(Boolean(form.tabs), (el) => el.child(this.tabStrip(t, n, form, color)))
       .when(form.step === "question", (el) =>
         el
           .when(Boolean(form.header && !form.tabs), (d) => d.child(div().text_size(10).font_semibold().text_color(t.dim).child(form.header.toUpperCase())))
@@ -385,7 +465,7 @@ export default class ConductTriage extends View {
                 ? btn("c-confirm", "Confirm", true, () => this.confirm(n, form))
                 : form.tabs ? btn("c-skip", "Skip this question →", true, () => this.act("skip")) : btn("c-dismiss", "Dismiss question", false, () => this.act("dismiss"))))
               .when(staged != null || (form.multi && ticked), (r) => r.child(btn("c-reset", "Reset", false, () => this.reset(n, form))))
-              .when(canBack, (r) => r.child(btn("c-back", "← Back", false, () => { press(n.address, "left"); this.look(n); })))))
+              .when(canBack, (r) => r.child(btn("c-back", "← Back", false, () => this.back(n, form))))))
       .when(form.step === "review", (el) =>
         el
           .child(div().text_size(15).font_semibold().text_color(t.foreground).child("Review your answers"))
@@ -399,9 +479,9 @@ export default class ConductTriage extends View {
               .child(div().text_size(11).text_color(t.dim).child(x.label))
               .child(div().text_size(12).text_color(t.dim).child("not answered"))))
           .child(h_flex().gap(8).pt(2)
-            .child(btn("c-submit", "Submit answers", true, () => this.choose(n, form, 1)))
+            .child(btn("c-submit", nextUp ? "Submit and go to next agent" : "Submit answers", true, () => this.choose(n, form, 1)))
             .child(btn("c-cancelq", "Cancel", false, () => this.choose(n, form, 2)))
-            .child(btn("c-backr", "← Back", false, () => { press(n.address, "left"); this.look(n); }))));
+            .child(btn("c-backr", "← Back", false, () => this.back(n, form)))));
   }
 
   // A click handler that remembers the context it was given, so notify() repaints at once.
@@ -427,7 +507,7 @@ export default class ConductTriage extends View {
           .child(div().text_size(15).font_semibold().child("Triage"))
           .child(
             n
-              ? div().h(18).px(8).flex().items_center().rounded(9).text_size(10).font_semibold().bg(color).text_color(ink(color)).child(`${idx + 1} of ${q.length} unread`)
+              ? div().h(18).px(8).flex().items_center().rounded(9).text_size(10).font_semibold().bg(color).text_color(ink(color)).child(`Agent ${idx + 1} of ${q.length}`)
               : div().text_size(11).text_color(t.dim).child("inbox zero"),
           )
           // One dot per unread, in its own color; the one you're on is larger.
@@ -439,6 +519,15 @@ export default class ConductTriage extends View {
           .child(div().text_size(10).text_color(this.review ? t.accent : t.dim).child(this.review ? "critical + review" : "critical only"))
           .child(div().text_size(11).text_color(t.dim).child("Esc")),
       )
+      .when(Boolean(this.flash && Date.now() < this.flash.until), (el) =>
+        el.child(h_flex().gap(8).items_center().px(12).py(8).rounded(8).bg(colorOf(t, "done") + "22").border_1().border_color(colorOf(t, "done"))
+          .child(div().text_size(12).font_semibold().text_color(t.foreground).child(`✓ ${this.flash.text}`))
+          .child(div().text_size(12).text_color(t.muted).child(this.flash.next ? `→ next: ${this.flash.next}` : "→ inbox clear"))))
+      .when(Boolean(this.leave && n && this.leave.address === n.address), (el) =>
+        el.child(h_flex().gap(10).items_center().px(12).py(8).rounded(8).bg(color + "22").border_1().border_color(color)
+          .child(div().flex_1().text_size(12).text_color(t.foreground).child("This agent's questions aren't finished. Leave anyway?"))
+          .child(h_flex().id("c-leave-go").h(26).px(11).items_center().rounded(8).cursor_pointer().text_size(11).font_semibold().bg(color).text_color(ink(color)).on_click(this.on(() => this.act(this.leave.action))).child(this.leave?.action === "read" ? "Mark read" : "Leave unread"))
+          .child(h_flex().id("c-leave-stay").h(26).px(11).items_center().rounded(8).cursor_pointer().text_size(11).font_semibold().border_1().border_color(t.input).bg(t.raised).on_click(this.on(() => this.act("stay"))).child("Stay"))))
       .child(
         n
           ? v_flex().gap(10).flex_1().min_h(0)
@@ -456,7 +545,7 @@ export default class ConductTriage extends View {
                           .on_click(this.on(() => this.act("go"))).child("GO TO AGENT"),
                       ),
                   )
-                  .child(div().text_size(11).text_color(t.dim).child(`${parent ? `↳ ${parent.title} · ` : ""}${n.address} · ${n.spaceName} / ${n.tabName}`))
+                  .child(div().text_size(11).text_color(t.dim).child(`${parent ? `↳ ${parent.title} · ` : ""}${n.name ? `${n.name} · ` : ""}${n.address} · ${n.spaceName} / ${n.tabName}`))
                   .when(Boolean(n.msg || n.kind) && !form, (el) => el.child(div().text_size(12).text_color(t.foreground).child(n.msg || `waiting: ${n.kind}`))),
               )
               .child(
