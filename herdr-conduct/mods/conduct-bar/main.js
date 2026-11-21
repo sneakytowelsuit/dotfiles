@@ -5,7 +5,7 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { agents, spaces, run, theme, window as win, nextCommand, openOverlay } from "herdr";
-import { ORDER, NAME, needs, sorted, colorOf, ink, go, halo, nextNeeding, model } from "./attn.js";
+import { ORDER, NAME, CRITICAL, needs, sorted, colorOf, ink, go, halo, nextNeeding, model } from "./attn.js";
 
 function own(el) {
   return el.on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_mouse_down("right", (_e, cx) => cx.stop_propagation());
@@ -116,6 +116,16 @@ export default class ConductBar extends View {
       .tooltip(ready ? "Ask a primary agent to check on its sub-agents (alt-m)" : "No primary agent yet: one that has started sub-agents")
       .on_click(() => this.nudge())
       .child("⚑ NUDGE");
+    const unread = list.filter((a) => CRITICAL.includes(a.status) && a.unseen).length;
+    const inbox = own(h_flex())
+      .id("c-inbox")
+      .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
+      .border_1().border_color(unread ? t.foreground : t.border)
+      .text_color(unread ? t.foreground : t.dim)
+      .hover((x) => x.bg(t.hover))
+      .tooltip("Triage: step through the critical unread, on hotkeys (alt-t)")
+      .on_click(() => run("mod.open", { name: "conduct-triage" }))
+      .child(`INBOX ${unread}`);
     return h_flex()
       .size_full()
       .items_center()
@@ -135,7 +145,8 @@ export default class ConductBar extends View {
           : div().text_size(11).text_color(t.dim).child("Nothing needs you."),
       )
       .child(div().flex_1().h_full())
-      .child(div().flex_none().text_size(10).text_color(t.dim).px(8).child("alt-n next · alt-m nudge"))
+      .child(div().flex_none().text_size(10).text_color(t.dim).px(8).child("alt-t inbox · alt-n next · alt-m nudge"))
+      .child(div().flex_none().mr(8).child(inbox))
       .child(div().flex_none().mr(6).child(pressing ? halo(t.accent, 13, 4, nudge) : nudge))
       .child(this.button(t, "c-new", "plus", () => run("tab.new")))
       .when(Boolean(w.buttons), (el) =>

@@ -147,19 +147,30 @@ export async function send(address, text, force = true) {
 }
 export const interrupt = (address) => hc(["interrupt", address]);
 
-/** The message that asks a primary agent to look in on its sub-agents. */
+/** Statuses the triage inbox treats as critical (REVIEW can be added from the inbox). */
+export const CRITICAL = ["blocked", "error", "stalled"];
+
+/** The message that asks a primary agent to look in on its sub-agents, in Herdr's own terms. */
 export function nudgeText(primary, nodes) {
   const kids = primary.children.map((a) => nodes.get(a)).filter(Boolean);
   const bad = sorted(kids).filter(needs);
-  const wording = (k) => {
-    const label = `${k.title} (${k.address})`;
-    if (k.status === "blocked") return `${label} is blocked${k.msg ? `: ${k.msg}` : ""}`;
-    if (k.status === "error") return `${label} hit an error`;
-    if (k.status === "stalled") return `${label} looks stuck${k.since ? ` (no change for ${age(k.since)})` : ""}`;
-    return `${label} finished and its result hasn't been read`;
+  const intro =
+    "Herdr check-in. The IDs below (like t1z) are Herdr terminal addresses, not Claude, Codex or other harness session names. " +
+    "Use the hc CLI on them: `hc ls` lists your sub-agents, `hc read <id>` shows one's screen, " +
+    "`hc send <id> \"<text>\"` types to it, `hc interrupt <id>` presses its stop key.";
+  if (!bad.length) return `${intro}\n\nNothing is flagged, but please run \`hc ls\`, \`hc read\` each sub-agent you started, and report each one's state.`;
+  const line = (k) => {
+    const head = `- ${k.address} "${k.title}": `;
+    if (k.status === "blocked") return head + `blocked${k.kind ? ` (${k.kind})` : ""}${k.msg ? `: ${k.msg}` : ""}`;
+    if (k.status === "error") return head + "hit an error";
+    if (k.status === "stalled") return head + `says it is working but its screen hasn't changed${k.since ? ` for ${age(k.since)}` : ""}`;
+    return head + "finished and its result hasn't been read";
   };
-  if (!bad.length) return "Please check on all of your sub-agents (hc ls) and report each one's status.";
-  return `Please check on your sub-agents. ${bad.map(wording).join("; ")}. Use hc read <address> on each, unblock or restart what you can, and report back.`;
+  return (
+    `${intro}\n\nNeeds attention:\n${bad.map(line).join("\n")}\n\n` +
+    "For each, `hc read` it, then unblock it, restart it, or tell me what you need from me. " +
+    "If one is waiting on a permission or a question, ask me rather than answering for it. Report back when done."
+  );
 }
 
 /**

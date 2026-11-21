@@ -4,7 +4,7 @@
 //                   that need attention. Edit it, then send. Props: { mode, address? }
 
 import { View, div } from "gpui-kit";
-import { v_flex, h_flex, InputState, Input } from "gpui-base";
+import { v_flex, h_flex, InputState, Input, TextareaState, Textarea } from "gpui-base";
 import { props, closeOverlay, notify, theme } from "herdr";
 import { NAME, colorOf, ink, model, nudgeText, send, interrupt, age } from "./attn.js";
 
@@ -32,7 +32,7 @@ export default class ConductSend extends View {
     const m = model();
     const text = this.mode === "primary" && this.target ? nudgeText(m.nodes.get(this.target), m.nodes) : "";
     this.text = text;
-    this.input = InputState.new({ value: text });
+    this.input = this.mode === "primary" ? TextareaState.new({ value: text, rows: 12 }) : InputState.new({ value: text });
     this.input.on("change", (_e, cx) => { this.text = this.input.value(); cx.notify(); });
     this.input.on("submit", () => this.go());
     this.input.on("focus", (_e, cx) => { this.focused = true; cx.notify(); });
@@ -54,6 +54,7 @@ export default class ConductSend extends View {
 
   key(e, cx) {
     if (e.key === "escape") { closeOverlay(props().overlay); cx.stop_propagation(); }
+    else if (e.keystroke === "ctrl-enter") { this.go(); cx.stop_propagation(); }
   }
 
   btn(t, id, text, primary, action) {
@@ -108,8 +109,8 @@ export default class ConductSend extends View {
       )
       .when(Boolean(n), (el) =>
         el
-          .child(div().pt(4).text_size(11).text_color(t.dim).child(isPrimary ? "Message to send" : "Or type your own"))
-          .child(Input.new(this.input).h(36).px(10).rounded(9).border_1().border_color(this.focused ? t.accent : t.input).bg(t.background).text_size(12.5).text_color(t.foreground))
+          .child(div().pt(4).text_size(11).text_color(t.dim).child(isPrimary ? "Message to send (Ctrl+Enter sends)" : "Or type your own"))
+          .child((isPrimary ? Textarea.new(this.input).h(250).py(8) : Input.new(this.input).h(36)).px(10).rounded(9).border_1().border_color(this.focused ? t.accent : t.input).bg(t.background).text_size(12.5).text_color(t.foreground))
           .child(
             h_flex().pt(6).gap(8).justify_end()
               .child(this.btn(t, "c-cancel", "Cancel", false, () => closeOverlay(props().overlay)))
