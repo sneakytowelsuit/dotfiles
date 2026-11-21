@@ -9,7 +9,8 @@ import { first } from "./keys.js";
 import { unreadCount } from "./feed.js";
 import { readAllUsage } from "./usage-poll.js";
 import { fleet, money } from "./usage.js";
-import { ORDER, NAME, CRITICAL, sorted, colorOf, ink, go, halo, nextNeeding, model } from "./attn.js";
+import { ORDER, NAME, CRITICAL, sorted, colorOf, ink, go, halo, nextNeeding, model, previous } from "./attn.js";
+import { stateIcon } from "./glyphs.js";
 
 function own(el) {
   return el.on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_mouse_down("right", (_e, cx) => cx.stop_propagation());
@@ -23,6 +24,7 @@ export default class ConductBar extends View {
       for (;;) {
         const c = await nextCommand();
         if (c === "nudge") { this.nudge(); continue; }
+        if (c === "previous") { previous(); continue; }
         const a = nextNeeding(model().list, c === "prev" ? -1 : 1);
         if (a) go(a);
       }
@@ -93,7 +95,7 @@ export default class ConductBar extends View {
       .on_mouse_down("left", (_e, cx) => { if (n) this.press(status, cx); })
       .on_mouse_up("left", () => this.release(pick))
       // Compact (little room): a colour dot and the count; the name is in the tooltip.
-      .when(compact, (el) => el.child(div().flex_none().size(8).rounded_full().bg(loud ? ink(color) : color)))
+      .child(stateIcon(t, status, 12).flex_none().when(loud, (el) => el.text_color(ink(color))))
       .when(!compact, (el) => el.child(div().child(NAME[status])))
       .child(div().text_size(13).child(String(n)));
     return loud ? halo(color, 13, 5, chip) : div().flex_none().px(5).py(5).child(chip);

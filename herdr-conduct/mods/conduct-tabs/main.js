@@ -6,6 +6,7 @@ import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { spaces, run, theme, openOverlay } from "herdr";
 import { colorOf, ink, needs, sorted, model } from "./attn.js";
+import { stateIcon } from "./glyphs.js";
 
 function own(el) {
   return el.on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_mouse_down("right", (_e, cx) => cx.stop_propagation());
@@ -35,9 +36,10 @@ export default class ConductTabs extends View {
       .child(div().min_w(0).truncate().font_semibold().when(!c.active, (d) => d.font_normal()).child(label))
       .when(Boolean(st && st !== "idle"), (el) =>
         el.child(
-          div().flex_none().size(8).rounded_full().border_1().border_color(color)
-            .when(loud, (d) => d.bg(color).loop("opacity", { from: 0.35, to: 1, period: 1000 }))
-            .when(!loud && st === "working", (d) => d.bg(color).loop("opacity", { from: 0.4, to: 1, period: 1400 })),
+          div().flex_none().size(16).flex().items_center().justify_center().rounded_full().border_1().border_color(color)
+            .when(loud, (d) => d.bg(color).loop("opacity", { from: 0.7, to: 1, period: 1000 }))
+            .when(!loud && st === "working", (d) => d.loop("opacity", { from: 0.5, to: 1, period: 1400 }))
+            .child(stateIcon(t, st, 11).when(loud, (d) => d.text_color(ink(color)))),
         ))
       .when(nNeed > 0, (el) => el.child(div().flex_none().h(16).px(6).flex().items_center().rounded(8).bg(color).text_color(ink(color)).text_size(10).font_semibold().child(String(nNeed))));
   }

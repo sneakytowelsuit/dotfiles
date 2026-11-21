@@ -5,6 +5,7 @@
 
 import { div } from "gpui-kit";
 import { agents, terminals, spaces, panes, run, shared, setShared, hc } from "herdr";
+import { previousAddress, recordRecent } from "./recent.js";
 
 // Most urgent first. "stalled" is a working agent whose screen has stopped changing (see conduct-queue).
 export const ORDER = ["blocked", "error", "stalled", "done", "working", "idle"];
@@ -14,7 +15,7 @@ export const SAYS = {
   done: "finished while you weren't looking", working: "working", idle: "idle",
 };
 // What wants a decision from you. REVIEW (finished) is for information: it never counts as needing you.
-export const needs = (a) => a.status === "blocked" || a.status === "error" || a.status === "stalled";
+export const needs = (a) => !a.snoozed && (a.status === "blocked" || a.status === "error" || a.status === "stalled"); // snoozed: quiet until it wakes
 export const STALL_MS = 180000; // quiet this long while "working" = probably stuck (shared "conduct.stall_ms" overrides)
 
 export function colorOf(t, s) {
@@ -105,8 +106,13 @@ export function model() {
     // The agent you talk to (a primary) or are looking at right now "finishes" after every reply: nothing for you to read.
     if (n.raw === "done" && (n.primary || n.focused)) n.status = "idle";
     n.since = sinceMap[n.address]?.status === n.raw ? sinceMap[n.address].t : null;
+    // Snoozed: until a time or until its state changes (the mark is the state and when it began).
+    const snz = (shared("conduct.snooze") ?? {})[n.address];
+    n.snoozed = Boolean(snz) && snz.until > Date.now() && snz.mark === `${n.status}@${n.since ?? ""}`;
+    n.snoozeUntil = n.snoozed ? snz.until : null;
+    n.watched = (shared("conduct.watch") ?? []).includes(n.address);
     n.unseen = needs(n) && seen[n.address] !== `${n.status}@${n.since ?? ""}`;
-    n.fresh = n.status === "done" && seen[n.address] !== `${n.status}@${n.since ?? ""}`; // finished, not yet read
+    n.fresh = n.status === "done" && !n.snoozed && seen[n.address] !== `${n.status}@${n.since ?? ""}`; // finished, not yet read
     delete n._p; delete n._l;
   }
   const list = [...nodes.values()];
@@ -138,10 +144,20 @@ export function noteAnswered(address) {
 /** Take the person to an agent: its space and tab, then its pane, or a peek for a sub-agent. */
 export function go(n) {
   markSeen(n);
+  const recent = shared("conduct.recent"); // for the jump palette and "previous agent"
+  if (recent?.[0] !== n.address) setShared("conduct.recent", recordRecent(recent, n.address));
   if (n.space) run("space.select", { id: n.space });
   if (n.tab) run("tab.select", { id: n.tab });
   if (n.pane) run("pane.focus", { pane: n.pane });
   else run("terminal.peek", { terminal: n.address });
+}
+
+/** Back to the agent visited before this one (like alt-tab). */
+export function previous() {
+  const { nodes } = model();
+  const recent = shared("conduct.recent");
+  const address = previousAddress(recent, nodes, recent?.[0]);
+  if (address) go(nodes.get(address));
 }
 
 /** The agent after the focused one among those needing attention (dir -1: before). Null if none. */

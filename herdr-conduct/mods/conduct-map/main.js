@@ -16,7 +16,7 @@ export default class ConductMap extends View {
     this.address = null;
     this.width = 0;
     this.focus = cx.focus_handle();
-    this.scroll = new ScrollHandle();
+    this.scroll = ScrollHandle.new();
     this.cx = cx;
     cx.timer.after(150, () => this.focus.focus());
     cx.timer.every(4000, (cx) => cx.notify());
@@ -111,7 +111,7 @@ export default class ConductMap extends View {
       .child(h_flex().flex_none().items_center().justify_between()
         .child(div().text_size(16).font_semibold().child("Agent map"))
         .child(div().text_size(11).text_color(t.muted).child(`${list.length} agents`)))
-      .child(h_flex().id("map-legend").w_full().min_w(0).flex_none().gap(4).overflow_x_scrollbar()
+      .child(h_flex().id("map-legend").w_full().min_w(0).h(36).flex_none().items_center().gap(4).overflow_x_scrollbar()
         .children(ORDER.map((status) => this.chip(t, status, list.filter((a) => a.status === status).length))))
       .child(v_flex().id("map-grid").w_full().flex_1().min_h(0).min_w(0).gap(GAP).pr(6)
         .on_size_change(({ width }, cx) => {

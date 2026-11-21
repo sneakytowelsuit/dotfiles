@@ -7,6 +7,10 @@
     "alt-,": "mod.open:conduct-settings",
     "ctrl-alt-f": "mod.open:conduct-feed",
     "ctrl-alt-a": "mod.open:conduct-alerts",
-    "ctrl-alt-u": "mod.open:conduct-usage"
+    "ctrl-alt-u": "mod.open:conduct-usage",
+    "alt-a": "mod.open:conduct-map",
+    "ctrl-alt-b": "mod.open:conduct-batch",
+    "ctrl-alt-k": "mod.open:conduct-jump",
+    "ctrl-alt-tab": "conduct-bar.previous"
   }
 }

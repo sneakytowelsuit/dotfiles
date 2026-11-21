@@ -5,6 +5,7 @@
 
 import { div } from "gpui-kit";
 import { agents, terminals, spaces, panes, run, shared, setShared, hc } from "herdr";
+import { previousAddress, recordRecent } from "./recent.js";
 
 // Most urgent first. "stalled" is a working agent whose screen has stopped changing (see conduct-queue).
 export const ORDER = ["blocked", "error", "stalled", "done", "working", "idle"];
@@ -143,10 +144,20 @@ export function noteAnswered(address) {
 /** Take the person to an agent: its space and tab, then its pane, or a peek for a sub-agent. */
 export function go(n) {
   markSeen(n);
+  const recent = shared("conduct.recent"); // for the jump palette and "previous agent"
+  if (recent?.[0] !== n.address) setShared("conduct.recent", recordRecent(recent, n.address));
   if (n.space) run("space.select", { id: n.space });
   if (n.tab) run("tab.select", { id: n.tab });
   if (n.pane) run("pane.focus", { pane: n.pane });
   else run("terminal.peek", { terminal: n.address });
+}
+
+/** Back to the agent visited before this one (like alt-tab). */
+export function previous() {
+  const { nodes } = model();
+  const recent = shared("conduct.recent");
+  const address = previousAddress(recent, nodes, recent?.[0]);
+  if (address) go(nodes.get(address));
 }
 
 /** The agent after the focused one among those needing attention (dir -1: before). Null if none. */

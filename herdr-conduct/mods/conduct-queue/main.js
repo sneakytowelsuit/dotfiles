@@ -11,6 +11,8 @@ import { spaces, run, theme, hc, shared, setShared, openOverlay, setAgentOrder }
 import { ORDER, NAME, SAYS, STALL_MS, needs, sorted, colorOf, ink, go, halo, model, age, markState, markSeen } from "./attn.js";
 import { parse, signature } from "./activity.js";
 import { observe } from "./observe.js";
+import { stateIcon } from "./glyphs.js";
+import { density, SPACING } from "./density.js";
 import { pollUsage, readUsage } from "./usage-poll.js";
 import { miniHealth } from "./health.js";
 import { wake, untilText } from "./snooze.js";
@@ -109,7 +111,7 @@ export default class ConductQueue extends View {
     const says = a.status === "blocked" || a.status === "error" ? a.msg || (a.kind ? `waiting: ${a.kind}` : "") : act ? `${act.verb}… ${act.stats}` : a.msg;
     const body = v_flex()
       .id(`c-r-${a.address}`)
-      .px(10).py(7).gap(4).rounded(4).cursor_pointer()
+      .px(SPACING[density()].rowX).py(SPACING[density()].rowY).gap(SPACING[density()].cardGap).rounded(4).cursor_pointer()
       .border_1().border_color(a.focused ? t.accent : color)
       .bg(color + "26")
       .on_click(() => go(a))
@@ -121,7 +123,7 @@ export default class ConductQueue extends View {
           .child(div().flex_none().text_size(10).text_color(t.muted).child(age(a.since)))
           .child(
             div().flex_none().h(18).px(7).flex().items_center().rounded(9).text_size(9).font_semibold()
-              .bg(color).text_color(ink(color)).child(NAME[a.status]),
+              .bg(color).text_color(ink(color)).gap(4).child(stateIcon(t, a.status, 12).flex_none().text_color(ink(color))).child(NAME[a.status]),
           ),
       )
       .when(Boolean(says), (el) => el.child(div().truncate().text_size(10).text_color(t.muted).child(says)))
@@ -147,10 +149,10 @@ export default class ConductQueue extends View {
     const act = this.acts.get(a.address);
     return h_flex()
       .id(`c-l-${a.address}`)
-      .ml(indent ? 22 : 10).mr(8).px(8).py(4).gap(8).items_center().rounded(3).cursor_pointer()
+      .ml(indent ? 22 : 10).mr(8).px(SPACING[density()].lineX).py(SPACING[density()].lineY).gap(SPACING[density()].lineGap).items_center().rounded(3).cursor_pointer()
       .hover((x) => x.bg(t.hover))
       .on_click(() => go(a))
-      .child(div().flex_none().size(7).rounded_full().border_1().border_color(color).when(a.status === "working", (el) => el.bg(color).loop("opacity", { from: 0.35, to: 1, period: 1200 })))
+      .child(stateIcon(t, a.status, 12).flex_none().when(a.status === "working", (el) => el.loop("opacity", { from: 0.4, to: 1, period: 1200 })))
       .child(div().flex_none().max_w(120).truncate().text_size(11).text_color(t.muted).child(a.title))
       .child(div().flex_1().min_w(0).truncate().text_size(10).text_color(t.dim).child(a.snoozed ? `⏱ snoozed until ${untilText(a.snoozeUntil, Date.now())}` : act ? `${act.verb}… ${act.stats}` : a.msg))
       .child(div().flex_none().w(46).child(miniHealth(t, readUsage(a.address), { hot: a.status === "working" })))
@@ -178,10 +180,10 @@ export default class ConductQueue extends View {
         .when(!loud, (el) => el.text_color(c))
         .child(`${count(s)} ${NAME[s]}`);
     });
-    return v_flex().mt(10).children([
+    return v_flex().mt(SPACING[density()].primaryMargin).children([
       h_flex()
         .id(`c-p-${p.address}`)
-        .mx(8).px(8).py(6).gap(8).items_center().rounded(4).cursor_pointer().bg(t.surface).border_1().border_color(p.focused ? t.accent : t.border)
+        .mx(8).px(SPACING[density()].lineX).py(SPACING[density()].primaryY).gap(SPACING[density()].lineGap).items_center().rounded(4).cursor_pointer().bg(t.surface).border_1().border_color(p.focused ? t.accent : t.border)
         .on_click(() => go(p))
         .child(div().flex_none().text_size(12).text_color(t.accent).child("★"))
         .child(div().flex_1().min_w(0).truncate().text_size(12).font_semibold().text_color(t.foreground).child(p.title))

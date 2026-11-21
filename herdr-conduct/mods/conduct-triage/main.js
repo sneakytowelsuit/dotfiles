@@ -14,6 +14,7 @@ import { v_flex, h_flex, InputState, Input, TextareaState, Textarea } from "gpui
 import { props, closeOverlay, openOverlay, hc, notify, theme, shared, setShared, settings } from "herdr";
 import { NAME, CRITICAL, colorOf, ink, sorted, model, markSeen, go, send, press, age, halo, noteAnswered } from "./attn.js";
 import { parseForm, canType, keysFor } from "./form.js";
+import { stateIcon } from "./glyphs.js";
 import { inboxAction, show } from "./keys.js";
 
 const QUICK = { done: ["Thanks, looks good.", "Please continue.", "Summarize what you did in two lines."], blocked: ["Yes, go ahead.", "No, don't do that.", "Continue.", "Skip that and move on."], default: ["What's your status? One line.", "You seem stuck. Say what's blocking you, or continue.", "Continue."] };
@@ -606,7 +607,7 @@ export default class ConductTriage extends View {
                 v_flex().gap(8).p(14).rounded(8).border_1().border_color(color).bg(color + "1f")
                   .child(
                     h_flex().gap(10).items_center()
-                      .child(div().flex_none().h(20).px(9).flex().items_center().rounded(10).text_size(10).font_semibold().bg(color).text_color(ink(color)).child(NAME[n.status]))
+                      .child(div().flex_none().h(20).px(9).flex().items_center().rounded(10).text_size(10).font_semibold().bg(color).text_color(ink(color)).gap(4).child(stateIcon(t, n.status, 12).flex_none().text_color(ink(color))).child(NAME[n.status]))
                       .child(div().flex_1().min_w(0).truncate().text_size(16).font_semibold().child(n.title))
                       .child(div().flex_none().text_size(11).text_color(t.muted).child(age(n.since)))
                       .child(

@@ -14,6 +14,7 @@ import {
 } from "herdr";
 import { ACTIONS, byId, bindings, checkBinding, pretty } from "./keys.js";
 import { THEMES } from "./themes.js";
+import { density } from "./density.js";
 
 const MODS_ONLY = /^(ctrl|alt|shift|cmd|control|meta|super)$/i;
 
@@ -257,6 +258,18 @@ export default class ConductSettings extends View {
         .child(h_flex().gap(8).flex_wrap().children(others.map((n) => this.btn(t, `s-o-${n}`, n, n === curName, () => run("app.theme", { name: n })))))));
   }
 
+  densityTab(t) {
+    const current = density();
+    return v_flex().gap(10)
+      .child(div().text_size(12).text_color(t.muted).child("Spacing of the agent lists in the sidebar. Compact fits more agents on screen."))
+      .child(h_flex().gap(8).children([["comfortable", "Comfortable"], ["compact", "Compact"]].map(([mode, label]) => {
+        const active = current === mode;
+        return h_flex().id(`density-${mode}`).h(30).px(12).items_center().rounded(8).cursor_pointer().text_size(12)
+          .border_1().border_color(active ? t.accent : t.border).bg(active ? t.accent : t.raised).text_color(active ? t.accent_foreground : t.foreground)
+          .on_click(this.on(() => { setShared("conduct.density", mode); this.cx.notify(); })).child(label);
+      })));
+  }
+
   render(cx) {
     const t = theme();
     const tabBtn = (id, label) =>
@@ -273,8 +286,9 @@ export default class ConductSettings extends View {
           .child(div().flex_1())
           .child(tabBtn("keys", "Hotkeys"))
           .child(tabBtn("themes", "Themes"))
+          .child(tabBtn("density", "Density"))
           .child(div().text_size(11).text_color(t.dim).ml(8).child("Esc")),
       )
-      .child(v_flex().id("s-body").flex_1().min_h(0).overflow_y_scrollbar().pr(6).child(this.tab === "keys" ? this.keysTab(t) : this.themesTab(t)));
+      .child(v_flex().id("s-body").flex_1().min_h(0).overflow_y_scrollbar().pr(6).child(this.tab === "density" ? this.densityTab(t) : this.tab === "keys" ? this.keysTab(t) : this.themesTab(t)));
   }
 }

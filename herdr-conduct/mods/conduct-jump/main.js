@@ -42,7 +42,7 @@ export default class ConductJump extends View {
     this.selected = null;
     this.closed = false;
     this.handle = cx.focus_handle();
-    this.scroll = new ScrollHandle();
+    this.scroll = ScrollHandle.new();
     this.input = InputState.new({ value: "", placeholder: "Search agents, spaces, and tabs…" });
     this.input.on("change", (_event, cx) => {
       this.selected = null;

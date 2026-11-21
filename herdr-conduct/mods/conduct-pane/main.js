@@ -6,6 +6,7 @@ import { h_flex } from "gpui-base";
 import { panes, props, theme } from "herdr";
 import { NAME, needs, colorOf, ink, model, age } from "./attn.js";
 import { readUsage } from "./usage-poll.js";
+import { stateIcon } from "./glyphs.js";
 import { contextBar, cacheTimer } from "./health.js";
 
 export default class ConductPane extends View {
@@ -44,6 +45,7 @@ export default class ConductPane extends View {
             .border_1().border_color(color)
             .when(loud, (d) => d.bg(color).text_color(ink(color)).loop("opacity", { from: 0.6, to: 1, period: 1000 }))
             .when(!loud, (d) => d.text_color(color))
+            .child(stateIcon(t, st, 12).flex_none().when(loud, (d) => d.text_color(ink(color))))
             .child(`${NAME[st]}${a?.since ? ` ${age(a.since)}` : ""}`),
         ),
       );
