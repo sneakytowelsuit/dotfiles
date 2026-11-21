@@ -21,7 +21,8 @@ Or tell your agent to add the layout from `sneakytowelsuit/dotfiles`, folder `he
 
 ## What it does
 
-- **Top bar:** a chip per state with its count. `BLOCKED`, `ERROR`, `STUCK?` are filled and haloed when above zero; `REVIEW`, `WORKING`, `IDLE` are outlines. Click a chip to jump to the next agent in that state, press and hold for a menu of them. `INBOX n`, `⚑ NUDGE`, a new-tab button and a gear for settings sit on the right; the chips scroll sideways rather than being cut off.
+- **Top bar:** a chip per state with its count. `BLOCKED`, `ERROR`, `STUCK?` are filled and haloed when above zero; `REVIEW`, `WORKING`, `IDLE` are outlines. Click a chip to jump to the next agent in that state, press and hold for a menu of them. `INBOX n`, `⚑ NUDGE` and a gear for settings sit on the right; the chips scroll sideways rather than being cut off.
+- **Tab row:** under the bar, the shown space's tabs with a dot for the most urgent state of the agents in each (and a count of those that need you), plus a `+` for a new tab. Click selects, right-click opens the tab menu.
 - **Sidebar:** `NEEDS YOU` (a card per agent that needs a decision, with `REPLY` / `NUDGE`), a card per primary agent (state counts, working sub-agents with their live activity such as `Thingamajigging… 12s · ↓ 1.2k tokens`, `▸ n finished`, `▸ n idle`), other agents, and spaces.
 - **Pane headers:** a status stripe and a state pill with how long; only critical states fill and pulse.
 - **Stuck detection:** an agent that says it is working but whose screen has not changed for 3 minutes shows as `STUCK?` and counts as needing you.

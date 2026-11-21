@@ -2,17 +2,54 @@
   "id": "root",
   "type": "column",
   "titlebar": "none",
-  "traffic_lights": [16, 14],
+  "traffic_lights": [
+    16,
+    14
+  ],
   "font_size": 14,
   "background": "canvas",
   "children": [
-    { "id": "bar", "type": "block", "size": { "px": 46 }, "window_drag": true, "content": { "mod": "conduct-bar" } },
+    {
+      "id": "bar",
+      "type": "block",
+      "size": {
+        "px": 46
+      },
+      "window_drag": true,
+      "content": {
+        "mod": "conduct-bar"
+      }
+    },
+    {
+      "id": "tabs",
+      "type": "block",
+      "size": {
+        "px": 34
+      },
+      "content": {
+        "mod": "conduct-tabs"
+      }
+    },
     {
       "id": "body",
       "type": "row",
-      "divider": { "width": 1, "color": "border" },
+      "divider": {
+        "width": 1,
+        "color": "border"
+      },
       "children": [
-        { "id": "sidebar", "type": "block", "size": { "px": 300 }, "min": 200, "max": 480, "content": { "mod": "conduct-queue" } },
+        {
+          "id": "sidebar",
+          "type": "block",
+          "size": {
+            "px": 300
+          },
+          "min": 200,
+          "max": 480,
+          "content": {
+            "mod": "conduct-queue"
+          }
+        },
         {
           "id": "main",
           "type": "block",
@@ -23,9 +60,22 @@
               "gap": 6,
               "radius": 3,
               "background": "background",
-              "border": { "width": 1, "color": "border" },
-              "focus": { "width": 2, "color": "accent" },
-              "header": { "content": { "mod": "conduct-pane" }, "height": 30, "position": "top", "reveal": "always" },
+              "border": {
+                "width": 1,
+                "color": "border"
+              },
+              "focus": {
+                "width": 2,
+                "color": "accent"
+              },
+              "header": {
+                "content": {
+                  "mod": "conduct-pane"
+                },
+                "height": 30,
+                "position": "top",
+                "reveal": "always"
+              },
               "lone": true
             }
           }

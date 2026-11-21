@@ -131,7 +131,6 @@ export default class ConductBar extends View {
       .child(div().flex_1().min_w(0).h_full())
       .child(div().flex_none().mr(8).child(unread ? halo(hot, 13, 4, inbox) : inbox))
       .child(div().flex_none().mr(6).child(pressing ? halo(t.accent, 13, 4, nudge) : nudge))
-      .child(this.button(t, "c-new", "plus", () => run("tab.new")))
       .child(this.button(t, "c-settings", "gear", () => run("mod.open", { name: "conduct-settings" })))
       .when(Boolean(w.buttons), (el) =>
         el.child(

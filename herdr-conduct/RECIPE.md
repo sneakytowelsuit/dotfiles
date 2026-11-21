@@ -9,10 +9,11 @@ A Herdr window for running many agents from one primary agent. The top bar and s
 
 A `column` on the theme's `canvas` colour, system title bar hidden, 14px terminals, UI in the app font:
 
-- **Top bar, 46px** (drag to move the window; 1px bottom border that turns the "blocked" colour while anything is blocked, error or stuck). Left to right: the total agent count (11px, dim); one count chip per state, `BLOCKED`, `REVIEW`, `WORKING`, `IDLE` always, `ERROR` and `STUCK?` only when above zero (26px tall pills: 11px semibold label, 13px count); a flexible gap; an `INBOX n` pill; a `⚑ NUDGE` pill; a `+` (new tab) and a gear (settings) icon button; window buttons where the system draws none. The count chips live in a horizontally scrolling group so none is ever cut off.
+- **Top bar, 46px** (drag to move the window; 1px bottom border that turns the "blocked" colour while anything is blocked, error or stuck). Left to right: the total agent count (11px, dim); one count chip per state, `BLOCKED`, `REVIEW`, `WORKING`, `IDLE` always, `ERROR` and `STUCK?` only when above zero (26px tall pills: 11px semibold label, 13px count); a flexible gap; an `INBOX n` pill; a `⚑ NUDGE` pill; a gear (settings) icon button; window buttons where the system draws none. The count chips live in a horizontally scrolling group so none is ever cut off.
   - `BLOCKED`, `ERROR`, `STUCK?` with a count above zero are **filled** in the state's colour with a **pulsing two-ring halo** (rings fade 0.15 to 1 and 1 to 0.2 over 1.3s). With zero, or for `REVIEW`, `WORKING`, `IDLE`, they are **outlines**: `REVIEW` is never filled or haloed.
   - `INBOX n` counts unread critical agents; filled and haloed in the colour of the most urgent one when n is above zero, a dim outline at zero. `NUDGE` is an accent-filled, haloed pill when a primary agent exists and something needs attention, plain otherwise.
   - Click a count chip: jump to the next agent in that state (repeat clicks cycle). Press and hold (450ms): a popup listing those agents; click one to go there.
+- **Tab row, 34px** under the bar (chrome background, 1px bottom border): the shown space's tabs, each `index  name` (an unnamed tab is called by its first agent's title; the index is dropped when it would repeat the name), 12px, the active one on the surface colour with a 2px accent underline. A dot shows the most urgent state of the agents in the tab (filled and pulsing for blocked, error, stuck; pulsing for working; outline for finished) and a small filled badge counts those that need you. Click selects, right-click opens Herdr's tab menu, the row scrolls sideways when full, and a `+` at the right starts a new tab.
 - **Sidebar, 300px** (resizable 200 to 480), top to bottom in one scrolling column:
   1. `NEEDS YOU n`: one tinted, haloed card per blocked/error/stuck agent: a pulsing stripe, the agent's title (12px semibold), `NEW` until opened, time in that state, a filled state pill, the agent's own message (`waiting: question`) or its live activity line, `↳ primary · space / tab`, and a `REPLY` button (a question opens the inbox on that agent; otherwise a reply dialog) or `NUDGE`. Empty: "Nothing needs you."
   2. `PRIMARY AGENTS n`: a card per agent that has started sub-agents (★, title, status dot, `NUDGE`), a row of per-state count pills (outlines except blocked/error/stuck), working sub-agents as one line each (`worker-4  Thingamajigging… 12s · ↓ 1.2k tokens  3s`), `▸ n finished` and `▸ n idle` folds that expand to one-line rows.
@@ -50,21 +51,22 @@ Agent statuses come from `terminals()` (herdr-core), which includes sub-agents s
 
 ## Built from
 
-`layouts/conduct.json`, a `column` (`titlebar: none`, `font_size: 14`, `background: canvas`): `bar` (46px, `window_drag`, mod `conduct-bar`) then `body` row (1px `border` divider) of `sidebar` (300px, min 200, max 480, mod `conduct-queue`) and `main` (padding 6; `content: {tab: "active", pane: {gap 6, radius 3, background, border 1px, focus 2px accent, header: {mod conduct-pane, height 30, position top, reveal always}, lone: true}}`). No `theme` in the layout: it uses whichever theme the person picked.
+`layouts/conduct.json`, a `column` (`titlebar: none`, `font_size: 14`, `background: canvas`): `bar` (46px, `window_drag`, mod `conduct-bar`), `tabs` (34px, mod `conduct-tabs`), then `body` row (1px `border` divider) of `sidebar` (300px, min 200, max 480, mod `conduct-queue`) and `main` (padding 6; `content: {tab: "active", pane: {gap 6, radius 3, background, border 1px, focus 2px accent, header: {mod conduct-pane, height 30, position top, reveal always}, lone: true}}`). No `theme` in the layout: it uses whichever theme the person picked.
 
 Mods (each `mod.json` `{"place": "none"}`):
 
 | Mod | Role |
 |---|---|
-| `conduct-bar` | top bar; also owns the `nextCommand` loop for `conduct-bar.next` / `.prev` / `.nudge`, and `gear.svg`, `plus.svg`, window button icons |
+| `conduct-bar` | top bar; also owns the `nextCommand` loop for `conduct-bar.next` / `.prev` / `.nudge`, and `gear.svg` and the window button icons |
 | `conduct-queue` | sidebar; also the 4-second poller (activity lines, stuck detection, time in state, auto-read after answers) |
+| `conduct-tabs` | the tab row (`plus.svg`); shows the shown space's tabs with their agents' states |
 | `conduct-pane` | pane header |
 | `conduct-menu` | the hold-a-chip popup |
 | `conduct-send` | reply and nudge dialog (`props {mode: "agent" | "primary", address?}`) |
 | `conduct-triage` | the inbox, question forms and Finished list (`overlay` 62% x 86%); `form.js` parses the question screens |
 | `conduct-settings` | hotkeys and themes (`overlay` 62% x 86%); `themes.js` holds the 18 theme files |
 
-Shared modules must be copied between mod folders (mods cannot import across folders); `sync-shared.sh` does it. `attn.js` (the model: agents, statuses, tree, read marks, `go`, `send`, `press`, halo) lives in `conduct-bar` and is copied to `conduct-queue`, `-pane`, `-menu`, `-send`, `-triage`, `-settings`; `keys.js` (hotkey table and lookup) is copied to `conduct-triage` and `conduct-settings`.
+Shared modules must be copied between mod folders (mods cannot import across folders); `sync-shared.sh` does it. `attn.js` (the model: agents, statuses, tree, read marks, `go`, `send`, `press`, halo) lives in `conduct-bar` and is copied to `conduct-queue`, `-tabs`, `-pane`, `-menu`, `-send`, `-triage`, `-settings`; `keys.js` (hotkey table and lookup) is copied to `conduct-triage` and `conduct-settings`.
 
 `keys.json`: section `layout:conduct`: `alt-t` `mod.open:conduct-triage`, `alt-n` `conduct-bar.next`, `alt-p` `conduct-bar.prev`, `alt-m` `conduct-bar.nudge`, `alt-,` `mod.open:conduct-settings`. Merge it into the person's `keys.json`.
 
@@ -85,7 +87,7 @@ Shared modules must be copied between mod folders (mods cannot import across fol
 
 ## Done when
 
-1. `herdr-app check mods/<name>` passes for all seven mods, `herdr-app status` shows no errors, and `layout.switch {name: "conduct"}` shows the bar, sidebar and panes.
+1. `herdr-app check mods/<name>` passes for all eight mods, `herdr-app status` shows no errors, and `layout.switch {name: "conduct"}` shows the bar, sidebar and panes.
 2. With `test/scenario.sh up 12` (fake agents reporting every state over OSC 7501; run it from a terminal inside Herdr), the bar shows `BLOCKED 2`, `ERROR 1`, `REVIEW 1`, `WORKING 6`, `IDLE 3`; the first three are filled with a halo, the rest outlines; the sidebar lists the three needing agents under NEEDS YOU and a primary card with the rest.
 3. After 3 minutes (or `conduct.stall_ms` lowered) a working agent whose screen does not change becomes `STUCK?`.
 4. `alt-t` opens the inbox on the first blocked agent; `→` marks it read and shows the next; `←` skips; the count in `INBOX n` follows.
