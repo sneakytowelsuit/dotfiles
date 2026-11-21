@@ -356,7 +356,6 @@ export default class ConductTriage extends View {
   }
 
   key(e, cx) {
-    this.cx = cx;
     if (this.typing) {
       if (e.key === "escape") { this.handle.focus(); cx.stop_propagation(); }
       else if (e.keystroke === "ctrl-enter" && !this.typingNotes) { this.reply(this.text); cx.stop_propagation(); }
@@ -549,7 +548,7 @@ export default class ConductTriage extends View {
   }
 
   // A click handler that remembers the context it was given, so notify() repaints at once.
-  on(fn) { return (_e, cx) => { this.cx = cx; fn(); }; }
+  on(fn) { return () => fn(); } // never keep a handler's cx: it is invalid after the first await; this.cx stays init's AsyncContext
 
   render(cx) {
     const t = theme();

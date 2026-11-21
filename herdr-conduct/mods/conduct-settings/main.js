@@ -118,7 +118,6 @@ export default class ConductSettings extends View {
   // Record: the next chord pressed becomes the binding. (Keys Herdr already binds may act instead of being recorded;
   // the text box always works.)
   key(e, cx) {
-    this.cx = cx;
     if (this.recording) {
       if (e.key === "escape") { this.recording = null; cx.notify(); cx.stop_propagation(); return; }
       if (MODS_ONLY.test(e.key)) return;
@@ -158,6 +157,7 @@ export default class ConductSettings extends View {
 
   async applyTheme(name) {
     this.busy = name;
+    this.themeError = "";
     this.cx.notify();
     try {
       const wrote = await this.installThemes();
@@ -165,13 +165,14 @@ export default class ConductSettings extends View {
       await new Promise((r) => this.cx.timer.after(wrote ? 700 : 150, () => r()));
       run("app.theme", { name });
     } catch (e) {
-      notify({ title: "Couldn't apply the theme", body: String(e.message ?? e), level: "error", timeout: 4000 });
+      this.themeError = String(e.message ?? e);
+      notify({ title: "Couldn't apply the theme", body: this.themeError, level: "error", timeout: 4000 });
     }
     this.busy = "";
     this.cx.notify();
   }
 
-  on(fn) { return (_e, cx) => { this.cx = cx; fn(); }; }
+  on(fn) { return () => fn(); } // never keep a handler's cx: it is invalid after the first await; this.cx stays init's AsyncContext
 
   btn(t, id, label, primary, fn) {
     return h_flex().id(id).h(28).px(12).items_center().rounded(8).cursor_pointer().text_size(11).font_semibold()
@@ -242,6 +243,7 @@ export default class ConductSettings extends View {
     };
     const others = installed.filter((n) => !THEMES.some((x) => x.name === n) && !n.startsWith("dungeon"));
     return v_flex().gap(14)
+      .when(Boolean(this.themeError), (d) => d.child(div().text_size(11).text_color(t.blocked).child(`Couldn't apply the theme: ${this.themeError}`)))
       .child(div().text_size(12).text_color(t.muted).child("Click a theme to apply it. Missing theme files are written to ~/.config/herdr-app/themes/ for you. Light themes also switch Herdr to its light appearance (and dark ones back), so they show whatever the system is set to."))
       .children(families.map((f) => v_flex().gap(8)
         .child(div().text_size(10).font_semibold().text_color(t.dim).child(f.toUpperCase()))
