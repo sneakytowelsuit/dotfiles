@@ -100,9 +100,11 @@ export function model() {
     n.spaceName = s?.name ?? "";
     n.tabName = s?.tabs.find((q) => q.id === n.tab)?.name ?? "";
     n.pane = pn.find((q) => q.terminal === n.address)?.pane ?? null;
+    n.primary = !n.parent && n.children.length > 0;
+    // The agent you talk to (a primary) or are looking at right now "finishes" after every reply: nothing for you to read.
+    if (n.raw === "done" && (n.primary || n.focused)) n.status = "idle";
     n.since = sinceMap[n.address]?.status === n.raw ? sinceMap[n.address].t : null;
     n.unseen = needs(n) && seen[n.address] !== `${n.status}@${n.since ?? ""}`;
-    n.primary = !n.parent && n.children.length > 0;
     delete n._p; delete n._l;
   }
   const list = [...nodes.values()];

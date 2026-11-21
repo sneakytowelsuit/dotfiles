@@ -15,7 +15,7 @@ import { props, closeOverlay, openOverlay, hc, notify, theme, shared, setShared,
 import { NAME, CRITICAL, colorOf, ink, sorted, model, markSeen, go, send, press, age, halo } from "./attn.js";
 import { parseForm, canType, keysFor } from "./form.js";
 
-const QUICK = { blocked: ["Yes, go ahead.", "No, don't do that.", "Continue.", "Skip that and move on."], default: ["What's your status? One line.", "You seem stuck. Say what's blocking you, or continue.", "Continue."] };
+const QUICK = { done: ["Thanks, looks good.", "Please continue.", "Summarize what you did in two lines."], blocked: ["Yes, go ahead.", "No, don't do that.", "Continue.", "Skip that and move on."], default: ["What's your status? One line.", "You seem stuck. Say what's blocking you, or continue.", "Continue."] };
 
 export default class ConductTriage extends View {
   init(_p, cx) {
