@@ -19,7 +19,7 @@ A copy of `herdr-watch` reworked for the "one primary agent, dozens of sub-agent
 ```sh
 H=~/.config/herdr-app
 cp layouts/conduct.json "$H/layouts/" && cp -r mods/conduct-* "$H/mods/"
-# merge keys.json's "layout:conduct" section into $H/keys.json
+# merge keys.json's "layout:conduct" section into $H/keys.json (the settings mod edits it from then on)
 herdr-app do layout.switch --name conduct
 ```
 
@@ -42,3 +42,11 @@ Limits: how long an agent has been in a state is counted from when this layout f
 - **Replies are multi-line:** `Enter` adds a line, `Ctrl+Enter` (or `Send`) sends, in the inbox and in the reply/nudge dialog. Text with a new line is pasted into the agent (`hc send`) rather than typed key by key, so it carries the `<hc>` tag; the notes box on a preview question stays single-line.
 - **Read means "this state"**, not "this agent": the mark records the state and when it began, so an agent that is answered, goes back to work, and blocks again later is unread again.
 - **Decisions vs. information:** only blocked, error and stuck agents count as "needs you": they fill and pulse, fill the `INBOX` count, and get cards. A finished agent (`REVIEW`) is information: it is an outline everywhere, folds into `▸ n finished` under its primary in the sidebar, and `d` in the inbox opens the **Finished** list (one line per agent with its last message, `r` marks all read, click opens it). A finished primary, or an agent you are looking at, counts as idle. A "finished" that follows your own answer or message (the agent's reply to you) is marked read automatically.
+
+## Settings (gear button in the bar, `alt-,`)
+
+- **Hotkeys:** every hotkey the layout uses, as text you can edit (`alt-n, ctrl-shift-n`), with `Save`, `Record` (press the new key), per-key `Reset` and `Reset all`. Conflicts are caught: two actions can't share a key within the inbox or within the global keys, and a global key that Herdr already uses elsewhere in `keys.json` gets a warning. Presets move every global key to another modifier at once (`ctrl-alt`, `ctrl-shift`, `cmd-shift`), for window managers such as Aerospace or i3 that already own `alt-…`.
+  - *Global keys* (open inbox, next, previous, nudge, settings) are written to `keys.json`, section `layout:conduct`, and take effect at once.
+  - *Inbox keys* (mark read, leave unread, reply, go to agent, nudge, finished list, raw screen, back, skip, confirm, close) are kept in the shared value `conduct.keys`; the footer hints, tooltips and empty-state text show whatever you set. The number keys always pick form options.
+  - `Record` can't capture a key that Herdr already binds (it runs instead); type it into the box.
+- **Themes:** Catppuccin (Mocha, Macchiato, Frappé, Latte), Nord, Gruvbox (dark, light), Rosé Pine (main, Moon, Dawn), Dracula, Tokyo Night (Night, Storm), Solarized (dark, light), Everforest, Kanagawa and GitHub Dark, as colour swatches. Click one to apply it. The theme files are written to `~/.config/herdr-app/themes/` the first time you click (they are also in `themes/` here, made by `themes/generate.py`, and embedded in the settings mod), so copying the mods is enough on a new machine. Light themes also set `"appearance": "light"` in `settings.json` (dark ones set `"dark"`), because Herdr only shows a light theme when its appearance is light; delete that key to follow the system again.

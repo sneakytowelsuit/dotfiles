@@ -14,6 +14,7 @@ import { v_flex, h_flex, InputState, Input, TextareaState, Textarea } from "gpui
 import { props, closeOverlay, openOverlay, hc, notify, theme, shared, setShared, settings } from "herdr";
 import { NAME, CRITICAL, colorOf, ink, sorted, model, markSeen, go, send, press, age, halo, noteAnswered } from "./attn.js";
 import { parseForm, canType, keysFor } from "./form.js";
+import { inboxAction, show } from "./keys.js";
 
 const QUICK = { done: ["Thanks, looks good.", "Please continue.", "Summarize what you did in two lines."], blocked: ["Yes, go ahead.", "No, don't do that.", "Continue.", "Skip that and move on."], default: ["What's your status? One line.", "You seem stuck. Say what's blocking you, or continue.", "Continue."] };
 
@@ -362,13 +363,13 @@ export default class ConductTriage extends View {
       return;
     }
     const stop = () => cx.stop_propagation();
+    const id = inboxAction(e.keystroke);
     if (this.finishedView) {
-      const fm = { r: "readall", right: "readall", d: "review", escape: "close", q: "close", t: "close" };
-      if (fm[e.key]) { this.act(fm[e.key]); return stop(); }
+      const fm = { read: "readall", review: "review", close: "close" };
+      if (id && fm[id]) { this.act(fm[id]); return stop(); }
       return;
     }
-    const map = { right: "read", r: "read", left: "leave", u: "leave", i: "reply", enter: "enter", v: "raw", b: "back", o: "go", g: "go", n: "nudge", d: "review", escape: "close", q: "close", t: "close", s: "skip" };
-    if (map[e.key]) { this.act(map[e.key]); return stop(); }
+    if (id) { this.act(id); return stop(); }
     if (/^[1-9]$/.test(e.key)) {
       const n = this.now();
       const form = n && !this.raw && this.forms.get(n.address);
@@ -541,9 +542,9 @@ export default class ConductTriage extends View {
       )
       .child(
         h_flex().gap(14).flex_wrap().pt(4)
-          .child(this.hint(t, "r", "mark all read", () => this.act("readall")))
-          .child(this.hint(t, "d", "back to inbox", () => this.act("review")))
-          .child(this.hint(t, "Esc", "close", () => this.act("close"))),
+          .child(this.hint(t, show("read"), "mark all read", () => this.act("readall")))
+          .child(this.hint(t, show("review"), "back to inbox", () => this.act("review")))
+          .child(this.hint(t, show("close"), "close", () => this.act("close"))),
       );
   }
 
@@ -609,7 +610,7 @@ export default class ConductTriage extends View {
                       .child(
                         div().id("c-goto").flex_none().h(22).px(9).flex().items_center().rounded(11).cursor_pointer().text_size(10).font_semibold()
                           .border_1().border_color(color).text_color(color).hover((x) => x.bg(color).text_color(ink(color)))
-                          .tooltip("Drop into this agent's terminal (g)")
+                          .tooltip(`Drop into this agent's terminal (${show("go")})`)
                           .on_click(this.on(() => this.act("go"))).child("GO TO AGENT"),
                       ),
                   )
@@ -642,18 +643,18 @@ export default class ConductTriage extends View {
           : v_flex().items_center().justify_center().gap(6).py(60)
               .child(div().text_size(18).font_semibold().child("Inbox zero"))
               .child(div().text_size(12).text_color(t.dim).child("Nothing critical is unread. It comes back here if a state changes."))
-              .when(nFin > 0, (el) => el.child(div().pt(8).text_size(12).text_color(colorOf(t, "done")).child(`${nFin} finished: press d to look`))),
+              .when(nFin > 0, (el) => el.child(div().pt(8).text_size(12).text_color(colorOf(t, "done")).child(`${nFin} finished: press ${show("review")} to look`))),
       )
       )
       .child(
         h_flex().gap(14).flex_wrap().pt(4)
-          .child(this.hint(t, "→ / r", "mark read", () => this.act("read")))
-          .child(this.hint(t, "← / u", "leave unread", () => this.act("leave")))
-          .child(this.hint(t, "i", "reply", () => this.act("reply")))
-          .child(this.hint(t, "g", "go to agent", () => this.act("go")))
-          .child(this.hint(t, "n", "nudge primary", () => this.act("nudge")))
-          .child(this.hint(t, "d", nFin ? `finished (${nFin})` : "finished", () => this.act("review")))
-          .child(this.hint(t, "v", "raw screen", () => this.act("raw"))),
+          .child(this.hint(t, show("read"), "mark read", () => this.act("read")))
+          .child(this.hint(t, show("leave"), "leave unread", () => this.act("leave")))
+          .child(this.hint(t, show("reply"), "reply", () => this.act("reply")))
+          .child(this.hint(t, show("go"), "go to agent", () => this.act("go")))
+          .child(this.hint(t, show("nudge"), "nudge primary", () => this.act("nudge")))
+          .child(this.hint(t, show("review"), nFin ? `finished (${nFin})` : "finished", () => this.act("review")))
+          .child(this.hint(t, show("raw"), "raw screen", () => this.act("raw"))),
       );
   }
 }

@@ -5,6 +5,7 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
 import { agents, spaces, run, theme, window as win, nextCommand, openOverlay } from "herdr";
+import { first } from "./keys.js";
 import { ORDER, NAME, CRITICAL, sorted, colorOf, ink, go, halo, nextNeeding, model } from "./attn.js";
 
 function own(el) {
@@ -98,7 +99,7 @@ export default class ConductBar extends View {
       .border_1().border_color(pressing ? t.accent : t.border)
       .when(pressing, (el) => el.bg(t.accent).text_color(ink(t.accent)))
       .when(!pressing, (el) => el.text_color(ready ? t.muted : t.dim).hover((x) => x.bg(t.hover)))
-      .tooltip(ready ? "Ask a primary agent to check on its sub-agents (alt-m)" : "No primary agent yet: one that has started sub-agents")
+      .tooltip(ready ? `Ask a primary agent to check on its sub-agents (${first("g.nudge")})` : "No primary agent yet: one that has started sub-agents")
       .on_click(() => this.nudge())
       .child("⚑ NUDGE");
     const unreadList = sorted(list).filter((a) => CRITICAL.includes(a.status) && a.unseen);
@@ -110,7 +111,7 @@ export default class ConductBar extends View {
       .border_1().border_color(hot)
       .when(unread > 0, (x) => x.bg(hot).text_color(ink(hot)))
       .when(unread === 0, (x) => x.text_color(t.dim).hover((y) => y.bg(t.hover)))
-      .tooltip("Triage: step through the critical unread, on hotkeys (alt-t)")
+      .tooltip(`Triage: step through the critical unread, on hotkeys (${first("g.inbox")})`)
       .on_click(() => run("mod.open", { name: "conduct-triage" }))
       .child(`INBOX ${unread}`);
     return h_flex()
@@ -131,6 +132,7 @@ export default class ConductBar extends View {
       .child(div().flex_none().mr(8).child(unread ? halo(hot, 13, 4, inbox) : inbox))
       .child(div().flex_none().mr(6).child(pressing ? halo(t.accent, 13, 4, nudge) : nudge))
       .child(this.button(t, "c-new", "plus", () => run("tab.new")))
+      .child(this.button(t, "c-settings", "gear", () => run("mod.open", { name: "conduct-settings" })))
       .when(Boolean(w.buttons), (el) =>
         el.child(
           h_flex().flex_none().px(6).gap(2)

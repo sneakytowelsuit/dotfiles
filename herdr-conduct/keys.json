@@ -3,6 +3,7 @@
     "alt-n": "conduct-bar.next",
     "alt-p": "conduct-bar.prev",
     "alt-m": "conduct-bar.nudge",
-    "alt-t": "mod.open:conduct-triage"
+    "alt-t": "mod.open:conduct-triage",
+    "alt-,": "mod.open:conduct-settings"
   }
 }
