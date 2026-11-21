@@ -9,8 +9,8 @@ import { first } from "./keys.js";
 import { unreadCount } from "./feed.js";
 import { readAllUsage } from "./usage-poll.js";
 import { fleet, money } from "./usage.js";
-import { ORDER, NAME, CRITICAL, sorted, colorOf, ink, go, halo, nextNeeding, model, previous } from "./attn.js";
-import { stateIcon } from "./glyphs.js";
+import { ORDER, NAME, CRITICAL, needs, sorted, colorOf, ink, go, halo, nextNeeding, model, previous } from "./attn.js";
+import { stateIcon, icon } from "./glyphs.js";
 
 function own(el) {
   return el.on_mouse_down("left", (_e, cx) => cx.stop_propagation()).on_mouse_down("right", (_e, cx) => cx.stop_propagation());
@@ -63,6 +63,21 @@ export default class ConductBar extends View {
       .child(svg(`mods/conduct-bar/${icon}.svg`).size(15));
   }
 
+  // One right-hand pill: icon, text, number.
+  pill(t, { id, glyph, label, n, color, fill, compact, tip, click }) {
+    const ink_ = fill ? ink(color) : null;
+    return own(h_flex()).id(id)
+      .h(26).px(compact ? 8 : 11).gap(compact ? 5 : 6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
+      .border_1().border_color(fill ? color : t.border)
+      .when(fill, (el) => el.bg(color).text_color(ink_))
+      .when(!fill, (el) => el.text_color(color === t.accent || color === t.muted ? t.dim : color).hover((x) => x.bg(t.hover)))
+      .tooltip(tip)
+      .on_click(click)
+      .child(icon(glyph, 12).flex_none())
+      .when(!compact, (el) => el.child(div().child(label)))
+      .child(div().text_size(13).child(String(n)));
+  }
+
   // Snoozed agents: a passive outline, never filled or haloed. Click opens the inbox.
   snoozedChip(t, n, compact) {
     return div().flex_none().px(5).py(5).child(
@@ -70,7 +85,7 @@ export default class ConductBar extends View {
         .border_1().border_color(t.border).text_color(t.dim).hover((x) => x.bg(t.hover))
         .tooltip(`${n} snoozed agent${n === 1 ? "" : "s"}. They come back when the snooze ends or their state changes.`)
         .on_click(() => run("mod.open", { name: "conduct-triage" }))
-        .child(compact ? "⏱" : "SNOOZED").child(div().text_size(13).child(String(n))),
+        .child(icon("snooze", 12).flex_none()).when(!compact, (el) => el.child(div().child("SNOOZED"))).child(div().text_size(13).child(String(n))),
     );
   }
 
@@ -112,28 +127,6 @@ export default class ConductBar extends View {
     const shown = ORDER.filter((st) => by(st).length > 0 || ["blocked", "done", "working", "idle"].includes(st));
     const total = list.length;
     const ready = m.primaries.length > 0;
-    const pressing = wants.length > 0 && ready;
-    const nudge = own(h_flex())
-      .id("c-nudge")
-      .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
-      .border_1().border_color(pressing ? t.accent : t.border)
-      .when(pressing, (el) => el.bg(t.accent).text_color(ink(t.accent)))
-      .when(!pressing, (el) => el.text_color(ready ? t.muted : t.dim).hover((x) => x.bg(t.hover)))
-      .tooltip(ready ? `Ask a primary agent to check on its sub-agents (${first("g.nudge")})` : "No primary agent yet: one that has started sub-agents")
-      .on_click(() => this.nudge())
-      .child("⚑ NUDGE");
-    const unreadList = sorted(list).filter((a) => CRITICAL.includes(a.status) && a.unseen && !a.snoozed);
-    const unread = unreadList.length;
-    const hot = unread ? colorOf(t, unreadList[0].status) : t.border;
-    const inbox = own(h_flex())
-      .id("c-inbox")
-      .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
-      .border_1().border_color(hot)
-      .when(unread > 0, (x) => x.bg(hot).text_color(ink(hot)))
-      .when(unread === 0, (x) => x.text_color(t.dim).hover((y) => y.bg(t.hover)))
-      .tooltip(`Triage: step through the critical unread, on hotkeys (${first("g.inbox")})`)
-      .on_click(() => run("mod.open", { name: "conduct-triage" }))
-      .child(`INBOX ${unread}`);
     // The status chips sit in the middle of the bar: a layer placed over it (painted first, so the buttons stay on top),
     // padded by the width of the right-hand buttons on both sides so they are centred on the window. When that leaves too
     // little room (a narrow window or a big zoom) only the small agent count is kept clear on the left, and past that the
@@ -146,34 +139,27 @@ export default class ConductBar extends View {
     const centred = width - 2 * right >= need;
     const padL = centred ? right : 110;
     const compact = !centred && width - 110 - right < need; // not even room beside the buttons: dots and counts only
-    // What happened while you were away: a quiet pill, accent outline while there is something unread (never filled).
+    // The right-hand pills all read icon / text / number. Filled in a colour when the number means something to act on
+    // (inbox, feed, nudge), a quiet outline otherwise; the text drops out first when there is little room.
+    const unreadList = sorted(list).filter((a) => CRITICAL.includes(a.status) && a.unseen && !a.snoozed);
+    const unread = unreadList.length;
+    const hot = unread ? colorOf(t, unreadList[0].status) : t.accent;
     const feedN = unreadCount(shared("conduct.feed") ?? [], Number(shared("conduct.feed.seen")) || 0);
-    const feed = own(h_flex())
-      .id("c-feed")
-      .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
-      .border_1().border_color(feedN ? t.accent : t.border)
-      .text_color(feedN ? t.accent : t.dim)
-      .hover((x) => x.bg(t.hover))
-      .tooltip(`What happened while you were away (${first("g.feed")})`)
-      .on_click(() => run("mod.open", { name: "conduct-feed" }))
-      .child(feedN ? `FEED ${feedN}` : "FEED");
-    // Spend and cache health of the Claude Code agents: a quiet outline (red only when contexts are nearly full).
+    const flagged = list.filter((a) => a.parent && needs(a)).length; // sub-agents a nudge would ask the primary about
     const f = fleet(readAllUsage());
+    const pressing = flagged > 0 && ready;
+    const inbox = this.pill(t, { id: "c-inbox", glyph: "inbox", label: "INBOX", n: unread, color: hot, fill: unread > 0, compact,
+      tip: `Triage: step through the critical unread, on hotkeys (${first("g.inbox")})`, click: () => run("mod.open", { name: "conduct-triage" }) });
+    const feed = this.pill(t, { id: "c-feed", glyph: "feed", label: "FEED", n: feedN, color: t.accent, fill: feedN > 0, compact,
+      tip: `What happened while you were away (${first("g.feed")})`, click: () => run("mod.open", { name: "conduct-feed" }) });
+    const nudge = this.pill(t, { id: "c-nudge", glyph: "nudge", label: "NUDGE", n: ready ? flagged : 0, color: t.accent, fill: pressing, compact,
+      tip: ready ? `Ask a primary agent to check on its sub-agents (${first("g.nudge")})` : "No primary agent yet: one that has started sub-agents", click: () => this.nudge() });
     const cost = f.agents
-      ? own(h_flex()).id("c-cost").h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
-          .border_1().border_color(f.full ? t.blocked : t.border).text_color(f.full ? t.blocked : t.muted).hover((x) => x.bg(t.hover))
-          .tooltip(`Claude Code usage: ${money(f.cost)} this session, ${f.cold} cold cache${f.cold === 1 ? "" : "s"}, ${f.full} near full (${first("g.usage")})`)
-          .on_click(() => run("mod.open", { name: "conduct-usage" }))
-          .child(`${money(f.perHour)}/hr${f.cold ? ` · ❄ ${f.cold}` : ""}`)
+      ? this.pill(t, { id: "c-cost", glyph: "cost", label: "SPEND", n: `${money(f.perHour)}/hr${f.cold ? ` · ❄ ${f.cold}` : ""}`, color: f.full ? t.blocked : t.muted, fill: false, compact,
+          tip: `Claude Code usage: ${money(f.cost)} this session, ${f.cold} cold cache${f.cold === 1 ? "" : "s"}, ${f.full} near full (${first("g.usage")})`, click: () => run("mod.open", { name: "conduct-usage" }) })
       : div();
-    // The agent map: the whole fleet as a grid (hotkey in Settings).
-    const map = own(h_flex())
-      .id("c-map")
-      .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
-      .border_1().border_color(t.border).text_color(t.dim).hover((x) => x.bg(t.hover))
-      .tooltip(`Agent map: every agent as a cell (${first("g.map")})`)
-      .on_click(() => run("mod.open", { name: "conduct-map" }))
-      .child("MAP");
+    const map = this.pill(t, { id: "c-map", glyph: "map", label: "MAP", n: total, color: t.muted, fill: false, compact,
+      tip: `Agent map: every agent as a cell (${first("g.map")})`, click: () => run("mod.open", { name: "conduct-map" }) });
     return h_flex()
       .id("c-bar")
       .relative()

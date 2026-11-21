@@ -28,3 +28,20 @@ export function stateIcon(t, status, size) {
   const el = svg(`mods/conduct-glyphs/${glyphFor(status)}`).size(size).text_color(colorOf(t, status));
   return status === "working" ? el.spin(1800) : el; // the working arc turns
 }
+
+/** A plain icon from this folder (map, cost, feed, inbox, nudge, snooze), in a given colour. */
+export const icon = (name, size, color) => {
+  const el = svg(`mods/conduct-glyphs/${name}.svg`).size(size);
+  return color ? el.text_color(color) : el;
+};
+
+// Which harness an agent runs, as a small mark. The key is `status.app` (see HARNESSES.md); add a line and an SVG for a new one.
+export const HARNESS = Object.freeze({
+  "claude-code": { icon: "harness-claude.svg", name: "Claude Code" },
+  codex: { icon: "harness-codex.svg", name: "Codex" },
+});
+export const harnessName = (app) => HARNESS[app]?.name ?? (app ? app : "Agent");
+export const harnessIcon = (app, size, color) => {
+  const el = svg(`mods/conduct-glyphs/${HARNESS[app]?.icon ?? "harness-generic.svg"}`).size(size);
+  return color ? el.text_color(color) : el;
+};

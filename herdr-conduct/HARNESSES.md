@@ -113,6 +113,9 @@ To add a harness, add one object to `PARSERS`:
 
 ---
 
+### Harness mark (optional, one line)
+The agent map draws a small icon for the harness: add an entry to `HARNESS` in `mods/conduct-glyphs/glyphs.js` (`"<app>": { icon: "harness-<app>.svg", name: "Display name" }`) and an SVG next to it (24x24 viewBox, `stroke="currentColor"`, a simple mark, not a trademarked logo). Unknown harnesses get a generic robot.
+
 ## 6. Tier 3: questions and approval prompts (`FORM_PARSERS`)
 
 When an agent is `blocked`, the inbox shows its screen. If a parser recognises the screen, it shows a **form** instead, and answers by pressing the keys the harness expects.

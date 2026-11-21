@@ -3,7 +3,7 @@ import { h_flex, v_flex, ScrollHandle } from "gpui-base";
 import { closeOverlay, props, settings, theme } from "herdr";
 import { age, colorOf, go, ink, model, NAME, needs, ORDER } from "./attn.js";
 import { bindings, byId, pretty } from "./keys.js";
-import { stateIcon } from "./glyphs.js";
+import { stateIcon, harnessIcon, harnessName } from "./glyphs.js";
 import { fitCells, filterGroups, gridRows, groupAgents, moveFocus } from "./grid.js";
 import { ACTIONS } from "./keys.js";
 
@@ -58,7 +58,7 @@ export default class ConductMap extends View {
     const state = NAME[agent.status] ?? agent.status;
     const elapsed = age(agent.since) || "time unknown";
     const place = `${agent.spaceName || agent.space || "Unknown space"} / ${agent.tabName || agent.tab || "Unknown tab"}`;
-    const label = `${name} · ${agent.title} · ${state} · ${elapsed} · ${place}`;
+    const label = `${name} · ${harnessName(agent.app)} · ${agent.title} · ${state} · ${elapsed} · ${place}`;
     const icon = stateIcon(t, agent.status, Math.max(10, Math.min(44, Math.round(size * 0.38))))
       .when(critical, (el) => el.text_color(ink(color)))
       .when(agent.status === "working", (el) => el.spin(1800));
@@ -73,6 +73,7 @@ export default class ConductMap extends View {
         .when(agent.status === "working", (el) => el.loop("opacity", { from: 0.45, to: 1, period: 2200 })))
       .when(focused, (el) => el.child(div().absolute().inset(0).rounded(4).border_2().border_color(t.accent)))
       .child(icon)
+      .child(div().absolute().top(5).left(5).child(harnessIcon(agent.app, Math.max(9, Math.min(16, Math.round(size * 0.16))), critical ? ink(color) : t.dim).opacity(0.85)))
       .when(size >= 48, (el) => el.child(div().w_full().px(2).truncate().text_center().text_size(size >= 80 ? 12 : 10)
         .text_color(critical ? ink(color) : t.foreground).child(name)));
   }
