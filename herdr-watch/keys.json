@@ -1,0 +1,6 @@
+{
+  "layout:watch": {
+    "alt-n": "watch-bar.next",
+    "alt-p": "watch-bar.prev"
+  }
+}
