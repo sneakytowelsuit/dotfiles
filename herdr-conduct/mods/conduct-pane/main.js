@@ -37,8 +37,8 @@ export default class ConductPane extends View {
       .child(div().flex_1().truncate().font_semibold().text_color(p.focused ? t.accent : t.foreground).child(name))
       .when(subs > 0, (el) => el.child(div().flex_none().text_color(t.dim).child(`★ ${subs} sub-agent${subs === 1 ? "" : "s"}`)))
       .child(div().truncate().max_w(220).text_color(t.dim).child(p.branch ? `⎇ ${p.branch}` : ""))
-      .when(Boolean(u?.ctx), (el) => el.child(div().flex_none().w(250).child(contextBar(t, u, { width: 250, height: 5, label: true }))))
-      .when(Boolean(u), (el) => el.child(div().flex_none().w(190).child(cacheTimer(t, u, { width: 190, height: 4, hot: st === "working" }))))
+      .when(Boolean(u?.ctx), (el) => el.child(div().flex_shrink(1).min_w(0).max_w(250).w(250).overflow_hidden().child(contextBar(t, u, { height: 5, label: true }))))
+      .when(Boolean(u), (el) => el.child(div().flex_shrink(1).min_w(0).max_w(190).w(190).overflow_hidden().child(cacheTimer(t, u, { height: 4, hot: st === "working" }))))
       .when(Boolean(st && st !== "idle"), (el) =>
         el.child(
           div().flex_none().h(18).px(8).flex().items_center().gap(6).rounded(9).text_size(10).font_semibold()
