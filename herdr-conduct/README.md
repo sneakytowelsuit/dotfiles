@@ -1,52 +1,53 @@
-# Conduct: a Herdr layout for running many agents from a primary one
+# Conduct: a Herdr layout for running many agents from one primary agent
 
-A copy of `herdr-watch` reworked for the "one primary agent, dozens of sub-agents" workflow. Sub-agents are terminals the primary started with `hc run` (herdr-core records the parent), which Herdr's own `agents()` omits, so this layout reads `terminals()` instead.
+Built for the workflow where you talk to a primary agent that starts dozens of sub-agents with `hc run`. The window answers *which agent needs me, and what does it need?* States that need a decision (blocked, error, stuck) are filled chips with a pulsing halo; everything else (working, finished, idle) is a quiet outline. A hotkey inbox walks you through each waiting agent and its questions, then on to the next. See [RECIPE.md](RECIPE.md) for exactly what it looks like and does.
 
-- **Top bar:** a chip per state with its count: `BLOCKED`, `ERROR`, `STUCK?`, `REVIEW` (outlined when empty, filled with a pulsing halo when something is waiting), `WORKING`, `IDLE`. Then the top 3 agents that need you and `+n more`. Press and hold a chip for a menu of those agents; click it to cycle through them. `⚑ NUDGE` (haloed when something needs attention) at the right.
-- **Sidebar:**
-  - `NEEDS YOU`: every blocked, errored, stuck or finished-unread agent as a full row: its message or activity, `NEW` until you've opened it, how long it has been in that state, and `REPLY` / `NUDGE` / `OPEN`.
-  - `PRIMARY AGENTS`: a card per agent that has sub-agents, with counts per state, a `NUDGE` button, working sub-agents as one-liners with their activity (`Thingamajigging… 12s · ↓ 1.2k tokens`), and idle ones folded into `▸ n idle`.
-  - `OTHER AGENTS` and `SPACES`.
-- **STUCK?** An agent that reports `working` but whose screen (ignoring the ticking clock) hasn't changed for 3 minutes. Override with the shared value `conduct.stall_ms` or `STALL_MS` in `attn.js`.
-- **Reply** (`REPLY`/`NUDGE` on a row): quick answers (yes / no / continue; or a status check), `Interrupt`, and a free-text line, typed into that agent's terminal. It uses `hc send --force`, so it types into a blocked agent: that is your decision, made by clicking.
-- **Nudge** (`⚑ NUDGE`, `alt-m`, or a primary's card): composes a Herdr-specific message: the IDs are Herdr terminal addresses, not harness session names, so it names the `hc` commands to use (`hc ls`, `hc read <id>`, `hc send <id> "<text>"`, `hc interrupt <id>`), lists each flagged sub-agent (`- t1z "worker-1": blocked (question)`), and tells the primary to ask you before answering a permission or question. Editable in a multi-line box; Ctrl+Enter or `Send nudge` sends it.
-- **Triage inbox** (`INBOX n` in the bar, or `alt-t`; toggles): only the critical unread (blocked, error, stuck), one card at a time with the tail of its screen. `→`/`r` mark read, `←`/`u` leave unread and move on, `i`/Enter reply inline (Enter sends and marks read, Esc backs out), `1`-`4` quick replies (blocked: yes / no / continue / skip), `g` (or `o`) go to the agent, `n` nudge its primary, `d` also include finished (REVIEW), `Esc`/`q`/`t` close. "Read" is the same mark behind the sidebar's `NEW` tag, and an agent that changes state becomes unread again.
-- **Question forms:** a Claude `AskUserQuestion` in the inbox is drawn as a form in the app font instead of the terminal menu: radio rows (single) or checkboxes (multi) with descriptions, a tab strip for multi-question forms, `Something else…` for a typed answer, then a review step with `Submit answers`. Click an option or press its number; `Enter` continues or submits, `b` goes back, `v` shows the raw screen. It works by reading the question off the agent's screen and pressing the keys the terminal menu expects (`hc keys`), so it depends on Claude Code's current menu layout. `REPLY` on a question opens the inbox on that agent.
-- **Go:** clicking anything switches space and tab and focuses the pane (a sub-agent has no pane, so it is peeked). `alt-n` / `alt-p` step through what needs you.
+![Conduct](preview.png)
+![The inbox](inbox.png)
 
 ## Install
 
 ```sh
+git clone https://github.com/sneakytowelsuit/dotfiles
+cd dotfiles/herdr-conduct
 H=~/.config/herdr-app
-cp layouts/conduct.json "$H/layouts/" && cp -r mods/conduct-* "$H/mods/"
-# merge keys.json's "layout:conduct" section into $H/keys.json (the settings mod edits it from then on)
+cp layouts/conduct.json "$H/layouts/"
+cp -r mods/conduct-* "$H/mods/"
+# merge the "layout:conduct" section of keys.json into $H/keys.json (the settings mod edits it from then on)
 herdr-app do layout.switch --name conduct
 ```
 
-The mods share `attn.js` (the model and helpers); edit the copy in `mods/conduct-bar/` and run `./sync-shared.sh`.
+Or tell your agent to add the layout from `sneakytowelsuit/dotfiles`, folder `herdr-conduct`. Don't overwrite files you already have. Then `herdr-app check ~/.config/herdr-app/mods/conduct-bar` (and the other `conduct-*` mods) should pass. `ctrl-shift-l` switches layouts; deleting the files removes it. Themes need no copying: the settings mod writes the theme files it needs.
+
+## What it does
+
+- **Top bar:** a chip per state with its count. `BLOCKED`, `ERROR`, `STUCK?` are filled and haloed when above zero; `REVIEW`, `WORKING`, `IDLE` are outlines. Click a chip to jump to the next agent in that state, press and hold for a menu of them. `INBOX n`, `⚑ NUDGE`, a new-tab button and a gear for settings sit on the right; the chips scroll sideways rather than being cut off.
+- **Sidebar:** `NEEDS YOU` (a card per agent that needs a decision, with `REPLY` / `NUDGE`), a card per primary agent (state counts, working sub-agents with their live activity such as `Thingamajigging… 12s · ↓ 1.2k tokens`, `▸ n finished`, `▸ n idle`), other agents, and spaces.
+- **Pane headers:** a status stripe and a state pill with how long; only critical states fill and pulse.
+- **Stuck detection:** an agent that says it is working but whose screen has not changed for 3 minutes shows as `STUCK?` and counts as needing you.
+- **Nudge:** `⚑ NUDGE` (or the button on a primary's card) composes a message telling the primary that the IDs are Herdr terminal addresses (not session names), naming the `hc` commands to use, and listing the sub-agents that need attention. You edit it, then send.
+- **Inbox** (`alt-t`): one waiting agent at a time, with `Agent i of n`, then its card:
+  - **Claude Code questions** are drawn as a real form (radio or checkboxes, descriptions, `Something else…`, preview layouts with notes, `Skip`, `Reset`, `Back`, a review step) and answered by pressing the keys the terminal menu expects. `QUESTION k OF n` chips jump between questions. `Submit and go to next agent` sends and advances by itself.
+  - Anything else shows the agent's screen, quick replies and a multi-line reply box (`Ctrl+Enter` sends).
+  - `r` marks read, `u` leaves it unread, `g` goes to the agent's terminal, `d` opens the **Finished** list (information only: finished agents and what they last said), `v` shows the raw screen. Every hint chip is clickable.
+- **Settings** (gear, `alt-,`): every hotkey is editable (global keys go into `keys.json`, inbox keys are stored by the layout) with conflict warnings and one-click presets that move all global keys to `ctrl-alt`, `ctrl-shift` or `cmd-shift` (for tiling window managers such as Aerospace that own `alt-…`); and 18 colour themes: Catppuccin (4), Nord, Gruvbox (2), Rosé Pine (3), Dracula, Tokyo Night (2), Solarized (2), Everforest, Kanagawa, GitHub Dark.
+
+Default hotkeys: global `alt-t` inbox, `alt-n` / `alt-p` next / previous agent needing you, `alt-m` nudge, `alt-,` settings. Inbox keys are listed in settings.
+
+## What it touches
+
+- It runs `hc read`, `hc keys`, `hc send` and `hc interrupt` on agent terminals: it reads their screens (for activity lines, stuck detection and question forms) and types into them only when you click or press a key. Nothing is sent over the network.
+- The settings mod writes `~/.config/herdr-app/keys.json` (section `layout:conduct`), `settings.json` (`appearance`, only when you pick a theme) and `themes/*.json`.
+- Question forms depend on Claude Code's current question menu; a different layout falls back to showing the raw screen.
+
+## Editing
+
+The mods share modules that must be copied between mod folders (mods can't import across folders): `attn.js` and `keys.js` live in `mods/conduct-bar/`, and `./sync-shared.sh` copies them. Themes are generated by `python3 themes/generate.py` (it also rewrites `mods/conduct-settings/themes.js`).
 
 ## Testing without spending tokens
 
-`test/scenario.sh up [n]` starts `n` fake agents (`test/fake-agent.sh`) as sub-agents of the terminal it runs in, reporting every state over OSC 7501 with a Claude-like activity line; `down` removes them. They echo whatever they're sent. Run it from a terminal inside Herdr so that terminal becomes the primary. Herdr-core will type its automatic notes about them into that terminal.
+`test/scenario.sh up [n]` starts `n` fake agents (`test/fake-agent.sh`) as sub-agents of the terminal it runs in, reporting every state over OSC 7501 with a Claude-like activity line; `down` removes them. Run it from a terminal inside Herdr so that terminal becomes the primary. `test/haiku-question.sh [n]` starts real Haiku agents that stop on a blocking question (a few cents each), for the real blocked, reply, finished path.
 
-`test/haiku-question.sh [n]` starts real Haiku agents that stop on a blocking question (a few cents each), for testing the real blocked -> reply -> review path.
+## Limits
 
-Limits: how long an agent has been in a state is counted from when this layout first saw it (core's `status_ms` isn't exposed for sub-agents). The activity line is parsed from Claude Code's screen only.
-
-## Triage details
-
-- **Every hotkey hint is a button**, including the quick replies; `GO TO AGENT` is also in the card header. `g` marks it read and drops you into its terminal (its pane, or a peek over its tab for a sub-agent).
-- **Leaving questions unanswered:** in a question form, a single-select click only *stages* the pick (click it again to clear, `Reset` too); `Confirm`/`Enter` sends it, a digit key sends at once. `Skip this question →` (`s`) moves on without answering, and the review step says which are unanswered, so the agent asks about them next. A multi-select toggles on click, and `Reset` unticks everything. Claude's own menu can't clear an answer already sent, so the form says so.
-- **One agent at a time, all its questions, then the next:** the header says `Agent 2 of 5`; a question form says `QUESTION 2 OF 3` over clickable chips (one per question, plus `Review`) that jump straight to that question. Agents under the same primary are kept together. `r` or `u` on an agent with an open form asks "Leave anyway?" first (press it again, or click `Mark read` / `Stay`). Submitting the review (`Submit and go to next agent`), or answering a single-question form, sends the answers, shows "✓ Sent 3 answers to worker-3 → next: worker-4" and moves on by itself.
-- **Zoom:** dialogs are sized as a share of the window (62% x 86% for the inbox), the card body scrolls and only the header and footer hints stay pinned, so `ctrl +` / `ctrl -` keep everything on screen.
-- **Replies are multi-line:** `Enter` adds a line, `Ctrl+Enter` (or `Send`) sends, in the inbox and in the reply/nudge dialog. Text with a new line is pasted into the agent (`hc send`) rather than typed key by key, so it carries the `<hc>` tag; the notes box on a preview question stays single-line.
-- **Read means "this state"**, not "this agent": the mark records the state and when it began, so an agent that is answered, goes back to work, and blocks again later is unread again.
-- **Decisions vs. information:** only blocked, error and stuck agents count as "needs you": they fill and pulse, fill the `INBOX` count, and get cards. A finished agent (`REVIEW`) is information: it is an outline everywhere, folds into `▸ n finished` under its primary in the sidebar, and `d` in the inbox opens the **Finished** list (one line per agent with its last message, `r` marks all read, click opens it). A finished primary, or an agent you are looking at, counts as idle. A "finished" that follows your own answer or message (the agent's reply to you) is marked read automatically.
-
-## Settings (gear button in the bar, `alt-,`)
-
-- **Hotkeys:** every hotkey the layout uses, as text you can edit (`alt-n, ctrl-shift-n`), with `Save`, `Record` (press the new key), per-key `Reset` and `Reset all`. Conflicts are caught: two actions can't share a key within the inbox or within the global keys, and a global key that Herdr already uses elsewhere in `keys.json` gets a warning. Presets move every global key to another modifier at once (`ctrl-alt`, `ctrl-shift`, `cmd-shift`), for window managers such as Aerospace or i3 that already own `alt-…`.
-  - *Global keys* (open inbox, next, previous, nudge, settings) are written to `keys.json`, section `layout:conduct`, and take effect at once.
-  - *Inbox keys* (mark read, leave unread, reply, go to agent, nudge, finished list, raw screen, back, skip, confirm, close) are kept in the shared value `conduct.keys`; the footer hints, tooltips and empty-state text show whatever you set. The number keys always pick form options.
-  - `Record` can't capture a key that Herdr already binds (it runs instead); type it into the box.
-- **Themes:** Catppuccin (Mocha, Macchiato, Frappé, Latte), Nord, Gruvbox (dark, light), Rosé Pine (main, Moon, Dawn), Dracula, Tokyo Night (Night, Storm), Solarized (dark, light), Everforest, Kanagawa and GitHub Dark, as colour swatches. Click one to apply it. The theme files are written to `~/.config/herdr-app/themes/` the first time you click (they are also in `themes/` here, made by `themes/generate.py`, and embedded in the settings mod), so copying the mods is enough on a new machine. Light themes also set `"appearance": "light"` in `settings.json` (dark ones set `"dark"`), because Herdr only shows a light theme when its appearance is light; delete that key to follow the system again.
+How long an agent has been in a state is counted from when this layout first saw it. The activity line is parsed from Claude Code's screen only. Claude's own menu can't clear an answer already sent. `Record` in settings can't capture a key Herdr already binds: type it into the box.
