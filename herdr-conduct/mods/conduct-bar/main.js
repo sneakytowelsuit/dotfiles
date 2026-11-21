@@ -132,13 +132,11 @@ export default class ConductBar extends View {
     // little room (a narrow window or a big zoom) only the small agent count is kept clear on the left, and past that the
     // chips scroll sideways.
     // The measured width is the real window width; every size below is a design size that grows with zoom.
+    // Status chips and the other pills share the right-hand side; the chips drop their text when there is no room.
     const zoom = Number(settings()?.zoom) || 1;
-    const right = (this.rightW ?? 620) / zoom + 14; // measured width of the right-hand group (cost, FEED, INBOX, NUDGE, gear)
-    const width = (this.barW ?? 1400) / zoom;
-    const need = shown.length * 104 + 30;
-    const centred = width - 2 * right >= need;
-    const padL = centred ? right : 110;
-    const compact = !centred && width - 110 - right < need; // not even room beside the buttons: dots and counts only
+    const pillsW = (this.pillsW ?? 520) / zoom + 14; // measured width of the pills after the separator
+    const room = (this.barW ?? 1400) / zoom - 110 - pillsW - 40; // what is left for the status chips
+    const compact = room < shown.length * 104 + 30;
     // The right-hand pills all read icon / text / number. Filled in a colour when the number means something to act on
     // (inbox, feed, nudge), a quiet outline otherwise; the text drops out first when there is little room.
     const unreadList = sorted(list).filter((a) => CRITICAL.includes(a.status) && a.unseen && !a.snoozed);
@@ -162,27 +160,24 @@ export default class ConductBar extends View {
       tip: `Agent map: every agent as a cell (${first("g.map")})`, click: () => run("mod.open", { name: "conduct-map" }) });
     return h_flex()
       .id("c-bar")
-      .relative()
       .size_full()
       .items_center()
-      .justify_between()
       .pl(12)
       .bg(t.chrome)
       .border_b(1)
       .border_color(wants.length ? t.blocked : t.border)
       .on_size_change((size, cx) => { if (Math.abs((this.barW ?? 0) - size.width) > 1) { this.barW = size.width; cx.notify(); } })
       .when(w.platform === "macos" && w.titlebar === "none" && !w.fullscreen, (el) => el.pl(72))
+      .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).mr(10).child(`${total} agent${total === 1 ? "" : "s"}`))
+      .child(div().flex_1().min_w(0).h_full())
       .child(
-        div().absolute().top(0).bottom(0).left(0).right(0).pl(padL).pr(right).flex().items_center()
-          .child(
-            h_flex().id("c-counts").flex_1().min_w(0).items_center().overflow_x_scrollbar()
-              .child(h_flex().flex_none().mx_auto().items_center().gap(2).children([...shown.map((st) => this.count(t, st, by(st).length, list, compact)), ...(nSnoozed ? [this.snoozedChip(t, nSnoozed, compact)] : [])])),
-          ),
+        h_flex().id("c-counts").flex_shrink(1).min_w(0).items_center().gap(2).overflow_x_scrollbar()
+          .children([...shown.map((st) => this.count(t, st, by(st).length, list, compact)), ...(nSnoozed ? [this.snoozedChip(t, nSnoozed, compact)] : [])]),
       )
-      .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).child(`${total} agent${total === 1 ? "" : "s"}`))
+      .child(div().flex_none().w(1).h(18).mx(10).bg(t.border))
       .child(
         h_flex().id("c-right").flex_none().items_center()
-          .on_size_change((size, cx) => { if (Math.abs((this.rightW ?? 0) - size.width) > 1) { this.rightW = size.width; cx.notify(); } })
+          .on_size_change((size, cx) => { if (Math.abs((this.pillsW ?? 0) - size.width) > 1) { this.pillsW = size.width; cx.notify(); } })
           .child(div().flex_none().mr(8).child(map))
           .child(div().flex_none().mr(8).child(cost))
           .child(div().flex_none().mr(8).child(feed))
