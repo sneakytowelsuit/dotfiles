@@ -13,7 +13,8 @@ export const SAYS = {
   blocked: "waiting on you", error: "hit an error", stalled: "working, but quiet for a while",
   done: "finished while you weren't looking", working: "working", idle: "idle",
 };
-export const needs = (a) => ORDER.indexOf(a.status) <= ORDER.indexOf("done");
+// What wants a decision from you. REVIEW (finished) is for information: it never counts as needing you.
+export const needs = (a) => a.status === "blocked" || a.status === "error" || a.status === "stalled";
 export const STALL_MS = 180000; // quiet this long while "working" = probably stuck (shared "conduct.stall_ms" overrides)
 
 export function colorOf(t, s) {
@@ -105,6 +106,7 @@ export function model() {
     if (n.raw === "done" && (n.primary || n.focused)) n.status = "idle";
     n.since = sinceMap[n.address]?.status === n.raw ? sinceMap[n.address].t : null;
     n.unseen = needs(n) && seen[n.address] !== `${n.status}@${n.since ?? ""}`;
+    n.fresh = n.status === "done" && seen[n.address] !== `${n.status}@${n.since ?? ""}`; // finished, not yet read
     delete n._p; delete n._l;
   }
   const list = [...nodes.values()];
@@ -116,13 +118,21 @@ export function sorted(list) {
   return list.map((a, i) => [a, i]).sort((x, y) => ORDER.indexOf(x[0].status) - ORDER.indexOf(y[0].status) || x[1] - y[1]).map((x) => x[0]);
 }
 
-/** Remember that you've looked at an agent in its current state. */
-export function markSeen(n) {
+/** Mark a state as read: the state *and when it began*, so blocked again later is unread again. */
+export function markState(address, status, since) {
   const seen = { ...(shared("conduct.seen") ?? {}) };
-  const mark = `${n.status}@${n.since ?? ""}`; // the state *and when it began*: blocked again later is unread again
-  if (seen[n.address] === mark) return;
-  seen[n.address] = mark;
+  const mark = `${status}@${since ?? ""}`;
+  if (seen[address] === mark) return;
+  seen[address] = mark;
   setShared("conduct.seen", seen);
+}
+
+/** Remember that you've looked at an agent in its current state. */
+export const markSeen = (n) => markState(n.address, n.status, n.since);
+
+/** You just answered or messaged this agent: its next "finished" is the aftermath of that, not news. */
+export function noteAnswered(address) {
+  setShared("conduct.answered", { ...(shared("conduct.answered") ?? {}), [address]: Date.now() });
 }
 
 /** Take the person to an agent: its space and tab, then its pane, or a peek for a sub-agent. */
@@ -146,6 +156,7 @@ export function nextNeeding(list, dir = 1) {
 /** Type a message to an agent, as you would. `force`: past the core's refusal to type into a blocked agent. */
 export async function send(address, text, force = true) {
   const r = await hc(["send", address, text, ...(force ? ["--force"] : [])]);
+  if (r.code === 0) noteAnswered(address);
   return r.code === 0;
 }
 export const interrupt = (address) => hc(["interrupt", address]);

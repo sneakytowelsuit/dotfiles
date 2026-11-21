@@ -12,7 +12,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input, TextareaState, Textarea } from "gpui-base";
 import { props, closeOverlay, openOverlay, hc, notify, theme, shared, setShared, settings } from "herdr";
-import { NAME, CRITICAL, colorOf, ink, sorted, model, markSeen, go, send, press, age, halo } from "./attn.js";
+import { NAME, CRITICAL, colorOf, ink, sorted, model, markSeen, go, send, press, age, halo, noteAnswered } from "./attn.js";
 import { parseForm, canType, keysFor } from "./form.js";
 
 const QUICK = { done: ["Thanks, looks good.", "Please continue.", "Summarize what you did in two lines."], blocked: ["Yes, go ahead.", "No, don't do that.", "Continue.", "Skip that and move on."], default: ["What's your status? One line.", "You seem stuck. Say what's blocking you, or continue.", "Continue."] };
@@ -22,7 +22,7 @@ export default class ConductTriage extends View {
     this.cx = cx;
     this.cur = null;
     this.typing = false;
-    this.review = false; // also show REVIEW (finished) items
+    this.finishedView = false; // d: the quiet list of finished agents instead of the inbox
     this.tails = new Map(); // address -> last lines of its screen
     this.forms = new Map(); // address -> the question form on its screen, if it shows one
     this.prev = new Map(); // "address|question" -> { option number: preview text }, for preview layouts
@@ -45,7 +45,11 @@ export default class ConductTriage extends View {
     this.handle = cx.focus_handle();
     this.mkInput(cx);
     cx.timer.after(150, () => this.handle.focus());
-    cx.timer.every(4000, (cx) => { const n = this.now(); if (n) this.loadTail(n.address, cx); cx.notify(); });
+    cx.timer.every(4000, (cx) => {
+      if (this.finishedView) { for (const f of this.finishedList().slice(0, 12)) this.loadTail(f.address, cx); }
+      else { const n = this.now(); if (n) this.loadTail(n.address, cx); }
+      cx.notify();
+    });
   }
 
   mkInput(cx) {
@@ -60,7 +64,7 @@ export default class ConductTriage extends View {
 
   queue() {
     const m = model();
-    const kinds = this.review ? [...CRITICAL, "done"] : CRITICAL;
+    const kinds = CRITICAL;
     const list = sorted(m.list).filter((n) => kinds.includes(n.status) && n.unseen);
     // One primary's agents stay together; groups ordered by their most urgent member.
     const g = (n) => n.parent ?? n.address;
@@ -68,6 +72,11 @@ export default class ConductTriage extends View {
     list.forEach((n, i) => { if (!first.has(g(n))) first.set(g(n), i); });
     const q = list.map((n, i) => [n, i]).sort((a, b) => first.get(g(a[0])) - first.get(g(b[0])) || a[1] - b[1]).map((x) => x[0]);
     return { m, q };
+  }
+
+  // Finished and not yet read, newest first.
+  finishedList() {
+    return model().list.filter((n) => n.status === "done" && n.fresh).sort((a, b) => (b.since ?? 0) - (a.since ?? 0));
   }
 
   now() {
@@ -263,7 +272,8 @@ export default class ConductTriage extends View {
         openOverlay({ mod: "conduct-send", kind: "dialog", width: 0.5, props: { mode: "primary", address: p ?? undefined } });
         return;
       }
-      case "review": this.review = !this.review; cx.notify(); return;
+      case "review": this.finishedView = !this.finishedView; if (this.finishedView) for (const f of this.finishedList().slice(0, 12)) this.loadTail(f.address, cx); cx.notify(); return;
+      case "readall": for (const f of this.finishedList()) markSeen(f); cx.notify(); return;
       case "raw": this.raw = !this.raw; cx.notify(); return;
       case "back": if (n) this.back(n, form); return;
       case "skip": if (n && form?.tabs) { this.stage.delete(n.address); press(n.address, "right"); this.bump(n, form, +1); this.look(n); cx.notify(); } return;
@@ -325,6 +335,7 @@ export default class ConductTriage extends View {
     const i = q.findIndex((x) => x.address === n.address);
     const rest = q.filter((x) => x.address !== n.address);
     const next = rest.length ? rest[Math.max(0, i) % rest.length] : null;
+    noteAnswered(n.address); // its next "finished" is the aftermath of this, not news
     this.flash = { text: `Sent ${what} to ${n.title}`, next: next ? next.title : null, until: Date.now() + 5000 };
     this.cx.timer.after(5200, (cx) => cx.notify());
     this.step(n, q, true, this.cx);
@@ -351,6 +362,11 @@ export default class ConductTriage extends View {
       return;
     }
     const stop = () => cx.stop_propagation();
+    if (this.finishedView) {
+      const fm = { r: "readall", right: "readall", d: "review", escape: "close", q: "close", t: "close" };
+      if (fm[e.key]) { this.act(fm[e.key]); return stop(); }
+      return;
+    }
     const map = { right: "read", r: "read", left: "leave", u: "leave", i: "reply", enter: "enter", v: "raw", b: "back", o: "go", g: "go", n: "nudge", d: "review", escape: "close", q: "close", t: "close", s: "skip" };
     if (map[e.key]) { this.act(map[e.key]); return stop(); }
     if (/^[1-9]$/.test(e.key)) {
@@ -486,6 +502,51 @@ export default class ConductTriage extends View {
             .child(btn("c-backr", "← Back", false, () => this.back(n, form)))));
   }
 
+  // The quiet list: agents that finished while you were away. Information, not decisions: no cards, nothing pulses.
+  finishedScreen(t, fin) {
+    const color = colorOf(t, "done");
+    // What the agent last said: its last "●" line, else its last real line.
+    const said = (address) => {
+      const lines = this.tails.get(address) ?? [];
+      const bullet = [...lines].reverse().find((l) => /^\s*●\s+\S/.test(l));
+      if (bullet) return bullet.replace(/^\s*●\s+/, "");
+      const real = [...lines].reverse().find((l) => l.trim() && !/^\s*(─|❯|--|⏵|✻|\*|·)/.test(l) && !/(Baked|Cooked|Worked|Churned|Sautéed) for/.test(l));
+      return real ? real.trim() : "";
+    };
+    const row = (f) =>
+      h_flex().id(`c-fin-${f.address}`).gap(10).items_center().px(12).py(9).rounded(8).cursor_pointer()
+        .border_1().border_color(t.border).bg(t.surface).hover((x) => x.border_color(color))
+        .on_click(this.on(() => { markSeen(f); closeOverlay(props().overlay); go(f); }))
+        .child(div().flex_none().size(8).rounded_full().border_1().border_color(color))
+        .child(
+          v_flex().flex_1().min_w(0).gap(2)
+            .child(h_flex().gap(8).items_center().child(div().truncate().text_size(13).font_semibold().text_color(t.foreground).child(f.title)).child(div().flex_none().text_size(10).text_color(t.dim).child(f.name ?? f.address)))
+            .child(div().truncate().text_size(11).text_color(t.muted).child(said(f.address) || "(reading its screen…)")),
+        )
+        .child(div().flex_none().text_size(10).text_color(t.dim).child(age(f.since)));
+    return v_flex().id("c-triage").track_focus(this.handle).on_key_down((e, cx) => this.key(e, cx))
+      .w_full().h_full().p(18).gap(12).bg(t.popover).text_color(t.foreground)
+      .border_t(3).border_color(color)
+      .child(
+        h_flex().items_center().gap(10)
+          .child(div().text_size(15).font_semibold().child("Finished"))
+          .child(div().text_size(11).text_color(t.dim).child(fin.length ? `${fin.length} unread` : "nothing unread"))
+          .child(div().flex_1())
+          .child(div().text_size(10).text_color(t.dim).child("information only"))
+          .child(div().text_size(11).text_color(t.dim).child("Esc")),
+      )
+      .child(
+        v_flex().id("c-fin-body").flex_1().min_h(0).overflow_y_scrollbar().gap(8).pr(4)
+          .children(fin.length ? fin.map(row) : [v_flex().items_center().py(60).gap(6).child(div().text_size(16).font_semibold().child("All caught up")).child(div().text_size(12).text_color(t.dim).child("Nothing has finished since you last looked."))]),
+      )
+      .child(
+        h_flex().gap(14).flex_wrap().pt(4)
+          .child(this.hint(t, "r", "mark all read", () => this.act("readall")))
+          .child(this.hint(t, "d", "back to inbox", () => this.act("review")))
+          .child(this.hint(t, "Esc", "close", () => this.act("close"))),
+      );
+  }
+
   // A click handler that remembers the context it was given, so notify() repaints at once.
   on(fn) { return (_e, cx) => { this.cx = cx; fn(); }; }
 
@@ -501,6 +562,9 @@ export default class ConductTriage extends View {
     const quick = n ? QUICK[n.status] ?? QUICK.default : [];
     const tail = n ? this.tails.get(n.address) ?? [] : [];
     const form = n && !this.raw ? this.forms.get(n.address) : null;
+    const fin = this.finishedList();
+    const nFin = fin.length;
+    if (this.finishedView) return this.finishedScreen(t, fin);
     return v_flex().id("c-triage").track_focus(this.handle).on_key_down((e, cx) => this.key(e, cx))
       .w_full().h_full().p(18).gap(12).bg(t.popover).text_color(t.foreground)
       .border_t(3).border_color(n ? color : t.border)
@@ -518,7 +582,7 @@ export default class ConductTriage extends View {
             return div().flex_none().size(here ? 10 : 6).rounded_full().bg(colorOf(t, x.status)).when(here, (d) => d.loop("opacity", { from: 0.5, to: 1, period: 900 }));
           })))
           .child(div().flex_1())
-          .child(div().text_size(10).text_color(this.review ? t.accent : t.dim).child(this.review ? "critical + review" : "critical only"))
+          .child(div().text_size(10).text_color(t.dim).child("needs you only"))
           .child(div().text_size(11).text_color(t.dim).child("Esc")),
       )
       .child(
@@ -578,8 +642,7 @@ export default class ConductTriage extends View {
           : v_flex().items_center().justify_center().gap(6).py(60)
               .child(div().text_size(18).font_semibold().child("Inbox zero"))
               .child(div().text_size(12).text_color(t.dim).child("Nothing critical is unread. It comes back here if a state changes."))
-              .when(!this.review && m.list.some((x) => x.status === "done" && x.unseen), (el) =>
-                el.child(div().pt(8).text_size(12).font_semibold().text_color(colorOf(t, "done")).child(`${m.list.filter((x) => x.status === "done" && x.unseen).length} finished and unread: press d`))),
+              .when(nFin > 0, (el) => el.child(div().pt(8).text_size(12).text_color(colorOf(t, "done")).child(`${nFin} finished: press d to look`))),
       )
       )
       .child(
@@ -589,7 +652,7 @@ export default class ConductTriage extends View {
           .child(this.hint(t, "i", "reply", () => this.act("reply")))
           .child(this.hint(t, "g", "go to agent", () => this.act("go")))
           .child(this.hint(t, "n", "nudge primary", () => this.act("nudge")))
-          .child(this.hint(t, "d", "+review", () => this.act("review")))
+          .child(this.hint(t, "d", nFin ? `finished (${nFin})` : "finished", () => this.act("review")))
           .child(this.hint(t, "v", "raw screen", () => this.act("raw"))),
       );
   }

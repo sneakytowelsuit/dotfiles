@@ -8,7 +8,7 @@
 import { View, div } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { spaces, run, theme, hc, shared, setShared, openOverlay, setAgentOrder } from "herdr";
-import { ORDER, NAME, SAYS, STALL_MS, needs, sorted, colorOf, ink, go, halo, model, age } from "./attn.js";
+import { ORDER, NAME, SAYS, STALL_MS, needs, sorted, colorOf, ink, go, halo, model, age, markState, markSeen } from "./attn.js";
 import { parse, signature } from "./activity.js";
 
 const own = (el) => el.on_mouse_down("left", (_e, cx) => cx.stop_propagation());
@@ -39,6 +39,16 @@ export default class ConductQueue extends View {
     for (const n of m.list) if (since[n.address]?.status !== n.raw) { since[n.address] = { status: n.raw, t: now }; changed = true; }
     for (const k of Object.keys(since)) if (!m.nodes.has(k)) { delete since[k]; changed = true; }
     if (changed) setShared("conduct.since", since);
+    // A "finished" that follows your own answer is the aftermath, not news: mark it read.
+    const answered = { ...(shared("conduct.answered") ?? {}) };
+    let spent = false;
+    for (const n of m.list) {
+      const a = answered[n.address];
+      if (a == null) continue;
+      if (n.raw === "done" && since[n.address] && since[n.address].t >= a) { markState(n.address, "done", since[n.address].t); delete answered[n.address]; spent = true; }
+      else if (now - a > 30 * 60 * 1000) { delete answered[n.address]; spent = true; }
+    }
+    if (spent) setShared("conduct.answered", answered);
     // Working agents: read the screen for the activity line, and for whether it moves.
     const work = m.list.filter((n) => n.raw === "working");
     for (let i = 0; i < work.length; i += 8) {
@@ -130,6 +140,8 @@ export default class ConductQueue extends View {
     const color = colorOf(t, p.status);
     const idle = sorted(kids.filter((k) => k.status === "idle"));
     const quiet = sorted(kids.filter((k) => k.status === "working"));
+    const fin = kids.filter((k) => k.status === "done" && k.fresh);
+    const fkey = `${p.address}:fin`;
     const key = `${p.address}:idle`;
     const chips = ORDER.filter((s) => count(s) > 0).map((s) => {
       const c = colorOf(t, s);
@@ -153,6 +165,13 @@ export default class ConductQueue extends View {
         ),
       h_flex().mx(8).px(8).pt(5).pb(2).gap(4).flex_wrap().children(chips),
       ...quiet.map((k) => this.line(t, k, true)),
+      fin.length
+        ? own(h_flex()).id(`c-f-${p.address}`).ml(22).mr(8).px(8).py(4).gap(6).items_center().rounded(3).cursor_pointer().hover((x) => x.bg(t.hover))
+            .on_click((_e, cx) => { this.open.has(fkey) ? this.open.delete(fkey) : this.open.add(fkey); cx.notify(); })
+            .child(div().text_size(10).text_color(t.dim).child(this.open.has(fkey) ? "▾" : "▸"))
+            .child(div().text_size(10).text_color(colorOf(t, "done")).child(`${fin.length} finished`))
+        : div(),
+      ...(this.open.has(fkey) ? fin.map((k) => this.line(t, k, true)) : []),
       idle.length
         ? own(h_flex()).id(`c-i-${p.address}`).ml(22).mr(8).px(8).py(4).gap(6).items_center().rounded(3).cursor_pointer().hover((x) => x.bg(t.hover))
             .on_click((_e, cx) => { this.open.has(key) ? this.open.delete(key) : this.open.add(key); cx.notify(); })
@@ -165,7 +184,7 @@ export default class ConductQueue extends View {
 
   space(t, s) {
     const color = s.status ? colorOf(t, s.status) : t.dim;
-    const loud = s.status === "blocked" || s.status === "done";
+    const loud = s.status === "blocked";
     return h_flex()
       .id(`c-s-${s.id}`)
       .mx(8).px(8).py(5).gap(9).items_center().rounded(3).cursor_pointer()
