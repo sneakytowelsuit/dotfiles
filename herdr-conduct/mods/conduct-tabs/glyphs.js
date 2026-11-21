@@ -24,9 +24,9 @@ function colorOf(t, s) {
   }
 }
 
-export function stateIcon(t, status, size) {
+export function stateIcon(t, status, size, spin = true) {
   const el = svg(`mods/conduct-glyphs/${glyphFor(status)}`).size(size).text_color(colorOf(t, status));
-  return status === "working" ? el.spin(1800) : el; // the working arc turns
+  return status === "working" && spin ? el.spin(1800) : el; // the working arc turns
 }
 
 /** A plain icon from this folder (map, cost, feed, inbox, nudge, snooze), in a given colour. */

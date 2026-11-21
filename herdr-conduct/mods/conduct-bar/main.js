@@ -110,7 +110,7 @@ export default class ConductBar extends View {
       .on_mouse_down("left", (_e, cx) => { if (n) this.press(status, cx); })
       .on_mouse_up("left", () => this.release(pick))
       // Compact (little room): a colour dot and the count; the name is in the tooltip.
-      .child(stateIcon(t, status, 12).flex_none().text_color(n > 0 ? ink(color) : t.dim))
+      .child(stateIcon(t, status, 12, n > 0).flex_none().text_color(n > 0 ? ink(color) : t.dim))
       .when(!compact, (el) => el.child(div().child(NAME[status])))
       .child(div().text_size(13).child(String(n)));
     return loud ? halo(color, 13, 5, chip) : div().flex_none().px(5).py(5).child(chip);
@@ -169,10 +169,10 @@ export default class ConductBar extends View {
       .on_size_change((size, cx) => { if (Math.abs((this.barW ?? 0) - size.width) > 1) { this.barW = size.width; cx.notify(); } })
       .when(w.platform === "macos" && w.titlebar === "none" && !w.fullscreen, (el) => el.pl(72))
       .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).mr(10).child(`${total} agent${total === 1 ? "" : "s"}`))
-      .child(div().flex_1().min_w(0).h_full())
       .child(
-        h_flex().id("c-counts").flex_shrink(1).min_w(0).items_center().gap(2).overflow_x_scrollbar()
-          .children([...shown.map((st) => this.count(t, st, by(st).length, list, compact)), ...(nSnoozed ? [this.snoozedChip(t, nSnoozed, compact)] : [])]),
+        h_flex().id("c-counts").flex_1().min_w(0).items_center().overflow_x_scrollbar()
+          .child(h_flex().flex_none().ml_auto().items_center().gap(2)
+            .children([...shown.map((st) => this.count(t, st, by(st).length, list, compact)), ...(nSnoozed ? [this.snoozedChip(t, nSnoozed, compact)] : [])])),
       )
       .child(div().flex_none().w(1).h(18).mx(10).bg(t.border))
       .child(
