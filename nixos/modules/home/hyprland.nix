@@ -177,11 +177,21 @@ lib.mkIf osConfig.programs.hyprland.enable {
           halign = "center";
           valign = "center";
           fade_on_empty = false;
-          placeholder_text = "Touch key / enter password";
+          # Shows whatever PAM is asking for right now: the key PIN, "touch
+          # the FIDO authenticator", the fingerprint prompt, or the password.
+          placeholder_text = "$PAMPROMPT";
           fail_text = "$PAMFAIL";
         }
       ];
       label = [
+        {
+          text = "1. Key PIN + Enter   2. Touch key when asked   (or fingerprint / password)";
+          font_size = 14;
+          color = "rgba(255, 255, 255, 0.7)";
+          position = "0, -150";
+          halign = "center";
+          valign = "center";
+        }
         {
           text = "$TIME";
           font_size = 72;
@@ -337,7 +347,7 @@ lib.mkIf osConfig.programs.hyprland.enable {
           key = "p";
           desc = "Power";
           submenu = [
-            (itemBind "l" "Lock" "Super+Alt+L" "loginctl lock-session")
+            (itemBind "l" "Lock" "Super+BackSpace" "loginctl lock-session")
             (item "s" "Suspend" "sh -c 'loginctl lock-session && systemctl suspend'")
             (itemBind "d" "Displays off" "Super+Shift+P" (shell "dpms-off"))
             (item "o" "Log out" (shell "session logout"))
