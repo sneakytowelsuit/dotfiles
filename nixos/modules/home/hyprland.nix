@@ -103,6 +103,43 @@ lib.mkIf osConfig.programs.hyprland.enable {
         # Apps started from the launcher keep running if Noctalia restarts.
         launch_apps_as_systemd_services = true;
       };
+      bar.default = {
+        start = [ "launcher" "cpu" "ram" "temp" ];
+        center = [ "workspaces" "clock" "active_window" ];
+        end = [
+          "media"
+          "tray"
+          "notifications"
+          "clipboard"
+          "network"
+          "bluetooth"
+          "volume"
+          "brightness"
+          "power_profile"
+          "battery"
+          "control-center"
+          "session"
+        ];
+      };
+      theme = {
+        source = "community";
+        community_palette = "Garnet";
+        builtin = "Dracula";
+        mode = "dark";
+        wallpaper_scheme = "vibrant";
+        templates.builtin_ids = [ "ghostty" "hyprland" ];
+      };
+      widget = {
+        clock.format = "{:%-I:%M %p}";
+        media = {
+          album_art_only = true;
+          hide_when_no_media = true;
+        };
+        network = {
+          show_label = false;
+          vpn_status = "both";
+        };
+      };
       wallpaper = {
         directory = "/home/austin/Pictures/Wallpapers/framework";
         automation = {
