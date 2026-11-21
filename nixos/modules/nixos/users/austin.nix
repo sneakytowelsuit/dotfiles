@@ -9,7 +9,9 @@
     isNormalUser = true;
     description = "Austin";
     extraGroups = [
+      "input" # mouseless reads keyboards via evdev
       "networkmanager"
+      "uinput" # ...and emits events through /dev/uinput
       "wheel"
     ];
     shell = pkgs.zsh;
@@ -18,6 +20,8 @@
     # itself, outside Nix).
     linger = true;
   };
+
+  hardware.uinput.enable = true;
 
   # Needed for a login shell: registers zsh in /etc/shells and sets up
   # system-wide completion. The interactive config is in modules/home/zsh.nix.

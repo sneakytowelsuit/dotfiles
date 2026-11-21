@@ -32,9 +32,4 @@ in
     cursor-theme = name;
     cursor-size = size;
   };
-
-  home.packages = with pkgs; [
-    # Installing Mouseless for keyboard driven mouse control
-    mouseless
-  ];
 }

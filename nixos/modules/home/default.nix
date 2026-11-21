@@ -7,16 +7,17 @@
   imports = [
     inputs.zen-browser.homeModules.beta
     ./agents.nix
+    ./communication.nix
     ./git.nix
     ./hyprland.nix
     ./kdeconnect.nix
+    ./mouseless.nix
     ./emacs.nix
     ./shell.nix
     ./cursor.nix
     ./terminal.nix
     ./tools.nix
     ./vscode.nix
-    ./zoom.nix
   ];
 
   # Use ~/.config, ~/.local/share, ... for programs that support it.
