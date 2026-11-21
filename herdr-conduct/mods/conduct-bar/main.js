@@ -4,8 +4,9 @@
 
 import { View, div, svg } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { agents, spaces, run, theme, window as win, nextCommand, openOverlay, settings } from "herdr";
+import { agents, spaces, run, theme, window as win, nextCommand, openOverlay, settings, shared } from "herdr";
 import { first } from "./keys.js";
+import { unreadCount } from "./feed.js";
 import { ORDER, NAME, CRITICAL, sorted, colorOf, ink, go, halo, nextNeeding, model } from "./attn.js";
 
 function own(el) {
@@ -122,12 +123,23 @@ export default class ConductBar extends View {
     // chips scroll sideways.
     // The measured width is the real window width; every size below is a design size that grows with zoom.
     const zoom = Number(settings()?.zoom) || 1;
-    const right = w.buttons ? 420 : 320;
+    const right = w.buttons ? 490 : 390; // the right-hand buttons are wider with the FEED pill
     const width = (this.barW ?? 1400) / zoom;
     const need = shown.length * 104 + 30;
     const centred = width - 2 * right >= need;
     const padL = centred ? right : 110;
     const compact = !centred && width - 110 - right < need; // not even room beside the buttons: dots and counts only
+    // What happened while you were away: a quiet pill, accent outline while there is something unread (never filled).
+    const feedN = unreadCount(shared("conduct.feed") ?? [], Number(shared("conduct.feed.seen")) || 0);
+    const feed = own(h_flex())
+      .id("c-feed")
+      .h(26).px(11).gap(6).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
+      .border_1().border_color(feedN ? t.accent : t.border)
+      .text_color(feedN ? t.accent : t.dim)
+      .hover((x) => x.bg(t.hover))
+      .tooltip(`What happened while you were away (${first("g.feed")})`)
+      .on_click(() => run("mod.open", { name: "conduct-feed" }))
+      .child(feedN ? `FEED ${feedN}` : "FEED");
     return h_flex()
       .id("c-bar")
       .relative()
@@ -150,6 +162,7 @@ export default class ConductBar extends View {
       .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).child(`${total} agent${total === 1 ? "" : "s"}`))
       .child(
         h_flex().flex_none().items_center()
+          .child(div().flex_none().mr(8).child(feed))
           .child(div().flex_none().mr(8).child(unread ? halo(hot, 13, 4, inbox) : inbox))
           .child(div().flex_none().mr(6).child(pressing ? halo(t.accent, 13, 4, nudge) : nudge))
           .child(this.button(t, "c-settings", "gear", () => run("mod.open", { name: "conduct-settings" })))

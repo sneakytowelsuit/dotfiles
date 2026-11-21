@@ -45,14 +45,15 @@ export function diffEvents(prevNodes, nodes, now) {
   const P = prevNodes instanceof Map ? prevNodes : new Map((prevNodes ?? []).map((n) => [n.address, n]));
   const N = nodes instanceof Map ? nodes : new Map((nodes ?? []).map((n) => [n.address, n]));
   const out = [];
+  const newcomers = [];
   for (const n of N.values()) {
     const p = P.get(n.address);
     const isPrimary = Boolean(n.primary);
     if (!p) {
-      const e = ev(now, n, null, "new", "", n.status);
-      out.push(e);
-      // Born in a state that needs you: say so too.
+      // Born in a state that needs you: that is the news, "appeared" would only repeat it. Otherwise note the arrival
+      // (collapsed below when many arrive at once).
       if (n.status === "blocked" || n.status === "error" || n.status === "stalled") out.push(ev(now, n, "new", n.status, detailOf(n)));
+      else newcomers.push(ev(now, n, null, "new", "", n.status));
       continue;
     }
     if (p.status === n.status) continue;
@@ -66,6 +67,11 @@ export function diffEvents(prevNodes, nodes, now) {
     if (QUIET.has(p.status) && QUIET.has(n.status) && p.since != null && now - p.since < FLICKER_MS) continue;
     out.push(ev(now, n, p.status, n.status, detailOf(n)));
   }
+  // Three or more arrivals in one look (a batch of workers started) become one line.
+  if (newcomers.length >= 3) {
+    const first = newcomers[0];
+    out.push({ ...first, title: `${newcomers.length} agents`, name: null, status: "", parent: first.parent });
+  } else out.push(...newcomers);
   for (const p of P.values()) if (!N.has(p.address)) out.push(ev(now, p, p.status, "ended", ""));
   // Attach parent titles.
   for (const e of out) if (e.parent) e.parentTitle = (N.get(e.parent) ?? P.get(e.parent))?.title ?? null;

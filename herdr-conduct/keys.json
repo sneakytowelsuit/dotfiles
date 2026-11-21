@@ -4,6 +4,8 @@
     "alt-p": "conduct-bar.prev",
     "alt-m": "conduct-bar.nudge",
     "alt-t": "mod.open:conduct-triage",
-    "alt-,": "mod.open:conduct-settings"
+    "alt-,": "mod.open:conduct-settings",
+    "ctrl-alt-f": "mod.open:conduct-feed",
+    "ctrl-alt-a": "mod.open:conduct-alerts"
   }
 }

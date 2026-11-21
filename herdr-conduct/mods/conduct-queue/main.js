@@ -10,6 +10,7 @@ import { v_flex, h_flex } from "gpui-base";
 import { spaces, run, theme, hc, shared, setShared, openOverlay, setAgentOrder } from "herdr";
 import { ORDER, NAME, SAYS, STALL_MS, needs, sorted, colorOf, ink, go, halo, model, age, markState, markSeen } from "./attn.js";
 import { parse, signature } from "./activity.js";
+import { observe } from "./observe.js";
 
 const own = (el) => el.on_mouse_down("left", (_e, cx) => cx.stop_propagation());
 
@@ -39,6 +40,9 @@ export default class ConductQueue extends View {
     for (const n of m.list) if (since[n.address]?.status !== n.raw) { since[n.address] = { status: n.raw, t: now }; changed = true; }
     for (const k of Object.keys(since)) if (!m.nodes.has(k)) { delete since[k]; changed = true; }
     if (changed) setShared("conduct.since", since);
+    // The feed and the alerts watch the same snapshot (with since filled in for the flicker rule).
+    for (const n of m.list) n.since ??= since[n.address]?.t ?? null;
+    observe(m.nodes, now);
     // A "finished" that follows your own answer is the aftermath, not news: mark it read.
     const answered = { ...(shared("conduct.answered") ?? {}) };
     let spent = false;

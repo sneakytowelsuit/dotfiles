@@ -61,3 +61,15 @@ a = alertsFor(M(n("a", "working")), M(n("a", "error")), { push: { on: true, topi
 assert.equal(a[0].push, true);
 assert.ok(validTopic(suggestTopic())); assert.equal(normalize(null).enabled, true);
 console.log("feed tests ok");
+
+// Arrivals: a newcomer born blocked is one event, a batch of quiet arrivals collapses.
+{
+  const mk = (a, status) => ({ address: a, title: a, status, parent: null, since: null });
+  const one = diffEvents(new Map(), new Map([["t1", mk("t1", "blocked")]]), 1000);
+  assert.equal(one.length, 1); assert.equal(one[0].to, "blocked");
+  const many = diffEvents(new Map(), new Map(["a", "b", "c", "d"].map((x) => [x, mk(x, "working")])), 1000);
+  assert.equal(many.length, 1); assert.match(many[0].title, /4 agents/);
+  const two = diffEvents(new Map(), new Map(["a", "b"].map((x) => [x, mk(x, "idle")])), 1000);
+  assert.equal(two.length, 2);
+  console.log("arrival tests ok");
+}
