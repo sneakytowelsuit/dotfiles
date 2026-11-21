@@ -1,13 +1,8 @@
 # mouseless config: https://github.com/jbensmann/mouseless
 # Hold Right Alt (tap = Right Alt) to enter the "mouse" layer. Caps Lock is
 # already Esc/Ctrl via keyd (see nixos/keyboard.nix), so it is not used here.
-startCommand: ""
-devices:
-  - pattern: "keyboard|Keyboard"  # regex matched against device names; adjust via `mouseless -d`
+# No `devices:` list, so every keyboard is read (including keyd's virtual one).
 baseMouseSpeed: 750.0
-baseScrollSpeed: 20.0
-mouseAccelerationTime: 0.5
-mouseDecelerationTime: 0.2
 
 layers:
   - name: initial
@@ -15,19 +10,17 @@ layers:
       rightalt: tap-hold-next-release rightalt ; toggle-layer mouse ; 200
 
   - name: mouse
-    passThrough: false
     bindings:
       h: move -1 0
       j: move 0 1
       k: move 0 -1
       l: move 1 0
-      y: scroll -1 0
-      u: scroll 0 1
-      i: scroll 0 -1
-      o: scroll 1 0
+      y: scroll left
+      u: scroll down
+      i: scroll up
+      o: scroll right
       f: speed 3.0
       d: speed 0.3
       space: button left
       a: button middle
       s: button right
-      esc: layer initial
