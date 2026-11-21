@@ -25,5 +25,6 @@ function colorOf(t, s) {
 }
 
 export function stateIcon(t, status, size) {
-  return svg(`mods/conduct-glyphs/${glyphFor(status)}`).size(size).text_color(colorOf(t, status));
+  const el = svg(`mods/conduct-glyphs/${glyphFor(status)}`).size(size).text_color(colorOf(t, status));
+  return status === "working" ? el.spin(1800) : el; // the working arc turns
 }

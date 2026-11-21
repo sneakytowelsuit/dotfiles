@@ -34,10 +34,10 @@ export default class ConductPane extends View {
         div().absolute().left(0).top(0).w_full().h(3).bg(st ? color : "#00000000")
           .when(loud, (d) => d.loop("opacity", { from: 0.35, to: 1, period: 1000 })),
       )
-      .child(div().absolute().left(0).bottom(0).w_full().child(contextBar(t, u, { height: 2, label: false })))
       .child(div().flex_1().truncate().font_semibold().text_color(p.focused ? t.accent : t.foreground).child(name))
       .when(subs > 0, (el) => el.child(div().flex_none().text_color(t.dim).child(`★ ${subs} sub-agent${subs === 1 ? "" : "s"}`)))
       .child(div().truncate().max_w(220).text_color(t.dim).child(p.branch ? `⎇ ${p.branch}` : ""))
+      .when(Boolean(u?.ctx), (el) => el.child(div().flex_none().w(250).child(contextBar(t, u, { width: 250, height: 5, label: true }))))
       .when(Boolean(u), (el) => el.child(div().flex_none().w(190).child(cacheTimer(t, u, { width: 190, height: 4, hot: st === "working" }))))
       .when(Boolean(st && st !== "idle"), (el) =>
         el.child(

@@ -37,11 +37,29 @@ Or tell your agent to add the layout from `sneakytowelsuit/dotfiles`, folder `he
 
 Default hotkeys: global `alt-t` inbox, `alt-n` / `alt-p` next / previous agent needing you, `alt-m` nudge, `alt-,` settings. Inbox keys are listed in settings.
 
+## More tools
+
+- **State glyphs:** every state has a shape as well as a colour (`!` blocked, `✕` error, pause bars stuck, check finished, an arc working, a dot idle), in the bar, sidebar, tabs, pane headers and the inbox.
+- **Agent map** (`alt-a`): the whole fleet as a grid of cells grouped by primary, filled only for blocked and error; hover for details, click or Enter to go there, legend chips filter by state. Scales to about 100 agents.
+- **Activity feed** (`ctrl-alt-f`, the `FEED n` pill): a timeline of what happened while you were away (blocked, errors, finishes, arrivals), with a "since you last looked" divider. **Alerts** (`ctrl-alt-a`): toast, sound and optional phone push (ntfy, off by default) for newly blocked, errored or stuck agents; quiet hours; batches a burst into one alert.
+- **Snooze** (`z` in the inbox, or `SNOOZE`): hide an agent for 5 minutes to tomorrow morning; it returns when the time ends or its state changes. "Tell me when this finishes" watches an agent. A `SNOOZED n` chip shows how many are hidden.
+- **Recover** (`x`, or `RECOVER` on stuck and errored cards): ask for a status, interrupt then ask, restart, restart and resume (Claude Code, `--continue`), end it; destructive ones need a second click. Optional auto-nudge sends one status check to an agent that has been stuck for N minutes.
+- **Usage** (`ctrl-alt-u`, the `$/hr` pill): for Claude Code agents, a context-window bar, a prompt-cache timer (warm, cooling, cold), a hit-ratio sparkline, session and last-turn cost, cache savings and burn rate, in the sidebar rows, the pane header and a Usage dialog. Costs are estimates from a dated price table (`PRICES` in `usage.js`).
+- **Batch reply** (`ctrl-alt-b`): answer several blocked agents at once; agents waiting on the same message are grouped, you tick who gets the reply, and a confirm step shows exactly who will receive it.
+- **Jump palette** (`ctrl-alt-k`) and **previous agent** (`ctrl-alt-tab`): fuzzy-find any agent, space or tab; jump back to the agent you came from.
+- **Density** (Settings, Density tab): comfortable or compact sidebar rows for big fleets.
+- **Other harnesses:** see [HARNESSES.md](HARNESSES.md).
+
+Hotkeys listed here are the defaults; all are editable in Settings.
+
 ## What it touches
 
 - It runs `hc read`, `hc keys`, `hc send` and `hc interrupt` on agent terminals: it reads their screens (for activity lines, stuck detection and question forms) and types into them only when you click or press a key. Nothing is sent over the network.
 - The settings mod writes `~/.config/herdr-app/keys.json` (section `layout:conduct`), `settings.json` (`appearance`, only when you pick a theme) and `themes/*.json`.
 - Question forms depend on Claude Code's current question menu; a different layout falls back to showing the raw screen.
+- **Usage** reads only token counts, model names and timestamps from Claude Code's session transcripts under `~/.claude/projects/` (never message text), using `tail` and `jq`; without `jq` no usage is shown.
+- **Alerts:** local by default. If you turn on phone push, each alert sends the agent's title and one-line message to ntfy.sh (a third-party server) over HTTPS with `curl`; the topic name acts as a password.
+- **Recover** can kill and restart terminals, only when you confirm.
 
 ## Editing
 

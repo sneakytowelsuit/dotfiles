@@ -88,14 +88,14 @@ export default class ConductBar extends View {
     const chip = own(h_flex())
       .id(`c-c-${status}`)
       .h(26).px(compact ? 8 : 10).gap(compact ? 5 : 7).items_center().rounded(13).cursor_pointer().text_size(11).font_semibold()
-      .border_1().border_color(n > 0 || status === "done" ? color : t.border)
-      .when(loud, (el) => el.bg(color).text_color(ink(color)))
-      .when(!loud, (el) => el.text_color(n > 0 || status === "done" ? color : t.dim).hover((s) => s.bg(t.hover)))
+      .border_1().border_color(n > 0 ? color : t.border)
+      .when(n > 0, (el) => el.bg(color).text_color(ink(color)))
+      .when(n === 0, (el) => el.text_color(t.dim).hover((s) => s.bg(t.hover)))
       .tooltip(n ? `${NAME[status]}: ${n}. Click: next one. Hold: choose.` : `${NAME[status]}: none`)
       .on_mouse_down("left", (_e, cx) => { if (n) this.press(status, cx); })
       .on_mouse_up("left", () => this.release(pick))
       // Compact (little room): a colour dot and the count; the name is in the tooltip.
-      .child(stateIcon(t, status, 12).flex_none().when(loud, (el) => el.text_color(ink(color))))
+      .child(stateIcon(t, status, 12).flex_none().text_color(n > 0 ? ink(color) : t.dim))
       .when(!compact, (el) => el.child(div().child(NAME[status])))
       .child(div().text_size(13).child(String(n)));
     return loud ? halo(color, 13, 5, chip) : div().flex_none().px(5).py(5).child(chip);
@@ -140,7 +140,7 @@ export default class ConductBar extends View {
     // chips scroll sideways.
     // The measured width is the real window width; every size below is a design size that grows with zoom.
     const zoom = Number(settings()?.zoom) || 1;
-    const right = w.buttons ? 620 : 520; // the right-hand group: cost, FEED, INBOX, NUDGE, gear
+    const right = (this.rightW ?? 620) / zoom + 14; // measured width of the right-hand group (cost, FEED, INBOX, NUDGE, gear)
     const width = (this.barW ?? 1400) / zoom;
     const need = shown.length * 104 + 30;
     const centred = width - 2 * right >= need;
@@ -187,7 +187,8 @@ export default class ConductBar extends View {
       )
       .child(div().flex_none().text_size(11).font_semibold().text_color(t.dim).child(`${total} agent${total === 1 ? "" : "s"}`))
       .child(
-        h_flex().flex_none().items_center()
+        h_flex().id("c-right").flex_none().items_center()
+          .on_size_change((size, cx) => { if (Math.abs((this.rightW ?? 0) - size.width) > 1) { this.rightW = size.width; cx.notify(); } })
           .child(div().flex_none().mr(8).child(cost))
           .child(div().flex_none().mr(8).child(feed))
           .child(div().flex_none().mr(8).child(unread ? halo(hot, 13, 4, inbox) : inbox))
