@@ -5,6 +5,8 @@ Built for the workflow where you talk to a primary agent that starts dozens of s
 ![Conduct](preview.png)
 ![The inbox](inbox.png)
 
+**Using another harness (Codex, Gemini CLI, Aider, ...)?** [HARNESSES.md](HARNESSES.md) says what works out of the box, what each harness needs, and how an agent can add it for you.
+
 ## Install
 
 ```sh

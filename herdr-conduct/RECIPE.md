@@ -95,3 +95,7 @@ Shared modules must be copied between mod folders (mods cannot import across fol
 6. `d` opens the Finished list and `r` empties it; a finished agent never appears as an inbox card.
 7. In settings, changing `alt-n` to another key updates `keys.json` and works at once, `Reset` restores it; clicking a theme recolours the window, and a light theme works on a dark system.
 8. At zoom 1.8 nothing in the bar, sidebar or dialogs is cut off without a way to scroll to it.
+
+## Other harnesses
+
+Conduct is built around Claude Code and already understands Codex's status and activity line. To make another coding-agent harness work as well, or to finish an install by offering that to the user, read [HARNESSES.md](HARNESSES.md): it lists what each harness needs (status, activity line, question forms, usage logs, resume), the exact files to change, a step-by-step procedure with the consent rules for changing the user's machine, and a conformance checklist. **If you installed this layout for someone, read its last two sections before you finish.**

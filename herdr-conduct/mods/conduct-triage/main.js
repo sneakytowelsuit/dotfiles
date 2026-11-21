@@ -93,7 +93,7 @@ export default class ConductTriage extends View {
       if (r.code !== 0) return;
       const lines = r.stdout.split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.trim());
       this.tails.set(address, lines.slice(-12));
-      const form = parseForm(r.stdout);
+      const form = parseForm(r.stdout, model().nodes.get(address)?.app);
       this.forms.set(address, form);
       if (form?.tabs) {
         const M = form.tabs.length;
@@ -130,7 +130,7 @@ export default class ConductTriage extends View {
       await press(address, String(o.n));
       await this.wait(170);
       const r = await hc(["read", address]);
-      const f = r.code === 0 ? parseForm(r.stdout) : null;
+      const f = r.code === 0 ? parseForm(r.stdout, model().nodes.get(address)?.app) : null;
       if (f?.preview != null && f.cursor != null) { const seen = this.prev.get(key) ?? {}; seen[f.cursor] = f.preview; this.prev.set(key, seen); this.cx.notify(); }
     }
     await press(address, String(home));

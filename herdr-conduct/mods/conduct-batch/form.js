@@ -11,7 +11,7 @@
 const SEP = /^\s*[─━]{20,}\s*$/;
 const OPT = /^\s*(?:❯\s*)?(\d+)\.\s+(?:\[([ ✔xX])\]\s+)?(.*?)\s*$/;
 
-export function parseForm(text) {
+function parseClaudeForm(text) {
   const lines = String(text).split("\n").map((l) => l.replace(/\s+$/, ""));
   let f = -1;
   for (let i = lines.length - 1; i >= 0; i--) if (/Enter to select|Esc to cancel/.test(lines[i])) { f = i; break; }
@@ -88,6 +88,18 @@ export function parseForm(text) {
   // Claude Code always adds "Type something" as the last row, except in a preview layout and on review.
   if (form.step === "question" && !form.preview && form.options.length) form.options[form.options.length - 1].other = true;
   return form.options.length ? form : null;
+}
+
+// Question forms per harness. To support another harness's question or approval prompt, write a function
+// (screenText) => Form | null (the Form shape is documented in HARNESSES.md) and register it under the `app` name
+// Herdr reports for that harness. With an `app` that has no parser the inbox shows the raw screen and quick replies,
+// which always works. Without an `app` the Claude Code parser is used (older callers).
+export const FORM_PARSERS = { "claude-code": parseClaudeForm };
+
+export function parseForm(text, app) {
+  if (!app) return parseClaudeForm(text);
+  const p = FORM_PARSERS[app];
+  return p ? p(text) : null;
 }
 
 // What `hc keys` can type: it has no names for ! ? ( ) : _ " @ # $ % ^ & * ~ | { } < > + and shifted symbols.
