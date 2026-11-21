@@ -73,9 +73,9 @@ export default class ConductQueue extends View {
         let r;
         try { r = await hc(["read", n.address]); } catch { return; }
         if (r.code !== 0) return;
-        const act = parse(r.stdout);
+        const act = parse(r.stdout, n.app);
         act ? this.acts.set(n.address, act) : this.acts.delete(n.address);
-        const sig = signature(r.stdout);
+        const sig = signature(r.stdout, n.app);
         if (this.sigs.get(n.address)?.sig !== sig) this.sigs.set(n.address, { sig, t: now });
       }));
     }
