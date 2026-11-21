@@ -16,6 +16,7 @@
     ./terminal.nix
     ./tools.nix
     ./vscode.nix
+    ./zoom.nix
   ];
 
   # Use ~/.config, ~/.local/share, ... for programs that support it.
