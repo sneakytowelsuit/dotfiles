@@ -5,6 +5,7 @@
 
 {
   home.packages = with pkgs; [
-    bitwarden-menu
+    bitwarden-desktop
+    bitwarden-cli
   ];
 }
